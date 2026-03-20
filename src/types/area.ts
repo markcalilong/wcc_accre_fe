@@ -38,15 +38,6 @@ export interface AreaCriteria {
   desc: string;
   criteriaUploads: FileUploadMetadata[];
   subcriteria: SubCriteria[];
-}
-
-export interface Area {
-  id: number;
-  documentId?: string;
-  area: string;
-  areaDesc: string;
-  proposedExhibits?: string;
-  remarks?: string;
   academic_program?: {
     id: number;
     documentId?: string;
@@ -57,7 +48,15 @@ export interface Area {
     id: number;
     documentId?: string;
     schoolyear?: string;
-    locale?: string;
   };
+}
+
+export interface Area {
+  id: number;
+  documentId?: string;
+  area: string;
+  areaDesc: string;
+  proposedExhibits?: string;
+  remarks?: string;
   areaCriteria: AreaCriteria[];
 }

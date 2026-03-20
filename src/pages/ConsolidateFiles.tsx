@@ -136,17 +136,18 @@ export default function ConsolidateFiles() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Filter areas by selected program and year
-  const filteredAreas = areas.filter(area => {
-    if (selectedProgram) {
-      const progId = (area.academic_program as any)?.documentId || (area.academic_program as any)?.id;
-      if (String(progId) !== selectedProgram) return false;
-    }
-    if (selectedYear) {
-      const yearId = (area.academic_year as any)?.documentId || (area.academic_year as any)?.id;
-      if (String(yearId) !== selectedYear) return false;
-    }
-    return true;
+  // Filter areas by selected program and year (now at criteria level)
+  const filteredAreas = areas.map(area => {
+    if (!selectedProgram && !selectedYear) return area;
+    const filteredCriteria = area.areaCriteria.filter(criteria => {
+      if (selectedProgram && String(criteria.academic_program?.id) !== selectedProgram) return false;
+      if (selectedYear && String(criteria.academic_year?.id) !== selectedYear) return false;
+      return true;
+    });
+    return { ...area, areaCriteria: filteredCriteria };
+  }).filter(area => {
+    if (!selectedProgram && !selectedYear) return true;
+    return area.areaCriteria.length > 0;
   });
 
   // Flatten all files from filtered areas
@@ -260,8 +261,8 @@ export default function ConsolidateFiles() {
   };
 
   const getConsolidatedFileName = () => {
-    const programLabel = programs.find(p => String(p.documentId || p.id) === selectedProgram)?.programCode || 'ALL';
-    const yearLabel = years.find(y => String(y.documentId || y.id) === selectedYear)?.schoolyear || 'ALL';
+    const programLabel = programs.find(p => String(p.id) === selectedProgram)?.programCode || 'ALL';
+    const yearLabel = years.find(y => String(y.id) === selectedYear)?.schoolyear || 'ALL';
     return `Consolidated_${programLabel}_${yearLabel}.pdf`;
   };
 
@@ -383,8 +384,8 @@ export default function ConsolidateFiles() {
             >
               <option value="">All Programs</option>
               {programs.map(p => (
-                <option key={p.id} value={p.documentId || p.id}>
-                  {p.programCode} - {p.programName || p.programDesc}
+                <option key={p.id} value={String(p.id)}>
+                  {p.programCode || p.attributes?.programCode}{p.programDesc ? ` - ${p.programDesc}` : p.attributes?.programDesc ? ` - ${p.attributes.programDesc}` : ''}
                 </option>
               ))}
             </select>
@@ -400,8 +401,8 @@ export default function ConsolidateFiles() {
             >
               <option value="">All Years</option>
               {years.map(y => (
-                <option key={y.id} value={y.documentId || y.id}>
-                  {y.schoolyear}
+                <option key={y.id} value={String(y.id)}>
+                  {y.schoolyear || y.attributes?.schoolyear}
                 </option>
               ))}
             </select>

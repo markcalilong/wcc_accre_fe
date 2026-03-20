@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
-import { Loader2, LogOut, LayoutDashboard, FileText, Users, GraduationCap, BookOpen, Microscope, Building2, UserCircle, Share2, Settings, BarChart3, Layers } from 'lucide-react';
+import { Loader2, LogOut, LayoutDashboard, FileText, Users, GraduationCap, BarChart3, Layers, ChevronDown, ChevronUp, FolderOpen, Shield } from 'lucide-react';
+import { hasManagementAccess, getUserPersonelRole } from '../utils/roles';
 
 interface UserData {
   id: number;
@@ -12,6 +13,19 @@ interface UserData {
     type?: string;
     description?: string;
   };
+  personel_role?: {
+    id: number;
+    documentId?: string;
+    role: string;
+    description?: string;
+    coveredAreas?: { id: number; area_with_permission: string }[];
+  };
+}
+
+interface AreaItem {
+  id: number;
+  documentId?: string;
+  area: string;
 }
 
 const SIDEBAR_ITEMS = [
@@ -21,6 +35,7 @@ const SIDEBAR_ITEMS = [
   { id: 'academic-programs', label: 'Academic Program Management', icon: GraduationCap, path: '/dashboard/academic-programs' },
   { id: 'consolidate', label: 'Consolidate Files', icon: Layers, path: '/dashboard/consolidate' },
   { id: 'users', label: 'User Management', icon: Users, path: '/dashboard/users' },
+  { id: 'roles', label: 'Role Management', icon: Shield, path: '/dashboard/roles' },
 ];
 
 interface DashboardLayoutProps {
@@ -30,26 +45,47 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [areas, setAreas] = useState<AreaItem[]>([]);
+  const [areasExpanded, setAreasExpanded] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Derive personel role name for permission checks
+  const personelRoleName = useMemo(() => {
+    if (!userData) return '';
+    return getUserPersonelRole(userData);
+  }, [userData]);
+
+  const isAdmin = useMemo(() => {
+    return hasManagementAccess(personelRoleName);
+  }, [personelRoleName]);
 
   const filteredSidebarItems = useMemo(() => {
     if (!userData) return [];
 
-    const roleName = userData.role?.name?.toLowerCase();
-    const roleType = userData.role?.type?.toLowerCase();
-
-    const isDean = roleName === 'dean' || roleType === 'dean';
-    const isAuthenticated = roleName === 'authenticated' || roleType === 'authenticated';
-
-    // Dean and Authenticated roles get full access
-    if (isDean || isAuthenticated) {
+    // Management roles get full sidebar access
+    if (isAdmin) {
       return SIDEBAR_ITEMS;
     }
 
-    // Faculty and other roles only see Area Monitoring (upload/view only)
+    // All other roles only see Area Monitoring (upload/view)
     return SIDEBAR_ITEMS.filter(item => item.id === 'area-monitoring');
-  }, [userData]);
+  }, [userData, isAdmin]);
+
+  // Filter sidebar areas based on user's coveredAreas
+  const filteredAreas = useMemo(() => {
+    if (!userData) return areas;
+    // Management roles (Admin/Dean) see all areas
+    if (isAdmin) return areas;
+    // Other roles: filter by coveredAreas from personel_role
+    const coveredAreaNames = userData.personel_role?.coveredAreas?.map(
+      a => a.area_with_permission.toLowerCase().trim()
+    ) || [];
+    if (coveredAreaNames.length === 0) return []; // No areas assigned = see nothing
+    return areas.filter(area =>
+      coveredAreaNames.includes(area.area.toLowerCase().trim())
+    );
+  }, [userData, areas, isAdmin]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -62,6 +98,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       try {
         const data = await api.getMe(token);
         setUserData(data);
+
+        // Fetch areas for sidebar
+        const areasData = await api.getAreas(token);
+        setAreas(areasData.map((a: any) => ({
+          id: a.id,
+          documentId: a.documentId,
+          area: a.area,
+        })));
       } catch (err: any) {
         if (err.message.includes('invalid') || err.message.includes('expired')) {
           localStorage.removeItem('jwt');
@@ -94,6 +138,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   const activeItem = filteredSidebarItems.find(item => location.pathname.startsWith(item.path || '')) || filteredSidebarItems[0];
+  const activeAreaId = location.pathname.match(/\/dashboard\/areas\/(.+)/)?.[1];
+
+  // Display role: prefer personel_role, fallback to built-in role
+  const displayRole = userData?.personel_role?.role || userData?.role?.name || 'Unknown';
 
   return (
     <div className="flex h-screen bg-white overflow-hidden">
@@ -106,17 +154,62 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
 
         <nav className="flex-1 px-4 space-y-1 pb-8">
+          {/* Dynamic AREAS section */}
+          {filteredAreas.length > 0 && (
+            <div className="mb-2">
+              <button
+                onClick={() => setAreasExpanded(!areasExpanded)}
+                className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg text-[10px] font-bold text-zinc-400 uppercase tracking-widest hover:text-zinc-200 transition-all"
+              >
+                <span className="flex items-center gap-2">
+                  <FolderOpen className="w-3.5 h-3.5" />
+                  Areas
+                </span>
+                {areasExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+              {areasExpanded && (
+                <div className="space-y-0.5 mt-1">
+                  {filteredAreas.map((area) => {
+                    const areaPath = `/dashboard/areas/${area.documentId || area.id}`;
+                    const isActive = activeAreaId === (area.documentId || String(area.id));
+                    return (
+                      <button
+                        key={area.id}
+                        onClick={() => navigate(areaPath)}
+                        className={`w-full text-left px-4 py-2 pl-8 rounded-lg text-xs font-medium transition-all flex items-center gap-2.5 ${
+                          isActive
+                            ? 'bg-[#4a86f7] text-white shadow-lg shadow-blue-900/20'
+                            : 'text-zinc-400 hover:bg-white/5 hover:text-white'
+                        }`}
+                      >
+                        <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isActive ? 'bg-white' : 'bg-zinc-500'}`} />
+                        <span className="truncate">{area.area}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Divider */}
+          {filteredAreas.length > 0 && (
+            <div className="border-t border-white/10 my-3" />
+          )}
+
+          {/* Management items */}
+          <p className="px-4 py-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Management</p>
           {filteredSidebarItems.map((item) => (
             <button
               key={item.id}
               onClick={() => navigate(item.path || '/dashboard')}
               className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all flex items-center gap-3 ${
-                activeItem?.id === item.id
+                activeItem?.id === item.id && !activeAreaId
                   ? 'bg-[#4a86f7] text-white shadow-lg shadow-blue-900/20'
                   : 'text-zinc-300 hover:bg-white/5 hover:text-white'
               }`}
             >
-              <item.icon className={`w-4 h-4 ${activeItem?.id === item.id ? 'text-white' : 'text-zinc-400'}`} />
+              <item.icon className={`w-4 h-4 ${activeItem?.id === item.id && !activeAreaId ? 'text-white' : 'text-zinc-400'}`} />
               {item.label}
             </button>
           ))}
@@ -129,7 +222,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
             <div className="overflow-hidden">
               <p className="text-sm font-bold truncate">{userData?.username}</p>
-              <p className="text-[10px] text-zinc-400 uppercase tracking-widest">{userData?.role?.name}</p>
+              <p className="text-[10px] text-zinc-400 uppercase tracking-widest">{displayRole}</p>
             </div>
           </div>
           <button

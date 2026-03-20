@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, FileText, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, FileText, CheckCircle2, Clock, AlertCircle, GraduationCap, Calendar } from 'lucide-react';
 import { AreaCriteria, FileUploadMetadata } from '../../types/area';
 import FileUploadComponent from './FileUploadComponent';
 
@@ -45,8 +45,18 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
             <h3 className="text-sm font-bold text-zinc-900 truncate" title={criteria.desc}>
               {criteria.desc}
             </h3>
-            <div className="flex items-center gap-3 mt-1">
+            <div className="flex items-center gap-2 flex-wrap mt-1">
               {getStatusBadge(criteria.criteriaUploads)}
+              {criteria.academic_program?.programCode && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100 uppercase tracking-wider">
+                  <GraduationCap className="w-3 h-3" /> {criteria.academic_program.programCode}
+                </span>
+              )}
+              {criteria.academic_year?.schoolyear && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-50 text-zinc-500 border border-zinc-100 uppercase tracking-wider">
+                  <Calendar className="w-3 h-3" /> {criteria.academic_year.schoolyear}
+                </span>
+              )}
               <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
                 {criteria.subcriteria.length} Sub-criteria
               </span>

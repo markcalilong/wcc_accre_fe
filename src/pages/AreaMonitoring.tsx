@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { Area, AreaCriteria, FileUploadMetadata } from '../types/area';
 import { Loader2, AlertCircle, RefreshCw, FileCheck, Clock, CheckCircle2, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { hasManagementAccess, getUserPersonelRole } from '../utils/roles';
 
 function getUploadStatus(uploads: FileUploadMetadata[]): 'none' | 'uploaded' | 'reviewed' | 'approved' {
   if (!uploads || uploads.length === 0) return 'none';
@@ -130,6 +131,7 @@ export default function AreaMonitoring() {
   const [error, setError] = useState<string | null>(null);
   const [selectedProgram, setSelectedProgram] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>('');
+  const [userData, setUserData] = useState<any>(null);
 
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem('jwt');
@@ -138,14 +140,16 @@ export default function AreaMonitoring() {
     setLoading(true);
     setError(null);
     try {
-      const [areasData, programsResult, yearsResult] = await Promise.all([
+      const [areasData, programsResult, yearsResult, userResult] = await Promise.all([
         api.getAreas(token),
         api.getAcademicPrograms().catch(() => []),
         api.getAcademicYears(token).catch(() => []),
+        api.getMe(token).catch(() => null),
       ]);
       setAreas(areasData);
       setPrograms(programsResult);
       setYears(yearsResult);
+      setUserData(userResult);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch areas');
     } finally {
@@ -157,14 +161,58 @@ export default function AreaMonitoring() {
     fetchData();
   }, [fetchData]);
 
-  // Filter areas based on selections
+  // Determine user's role and permissions
+  const personelRoleName = useMemo(() => {
+    if (!userData) return '';
+    return getUserPersonelRole(userData);
+  }, [userData]);
+
+  const isAdmin = useMemo(() => hasManagementAccess(personelRoleName), [personelRoleName]);
+
+  const userCoveredAreas = useMemo(() => {
+    return userData?.personel_role?.coveredAreas?.map(
+      (a: any) => a.area_with_permission.toLowerCase().trim()
+    ) || [];
+  }, [userData]);
+
+  const userAcademicProgram = useMemo(() => {
+    return userData?.academic_program || '';
+  }, [userData]);
+
+  // Filter areas and their criteria based on selections + user's role/coveredAreas/academicProgram
   const filteredAreas = useMemo(() => {
-    return areas.filter(area => {
-      if (selectedProgram && String(area.academic_program?.id) !== selectedProgram) return false;
-      if (selectedYear && String(area.academic_year?.id) !== selectedYear) return false;
-      return true;
-    });
-  }, [areas, selectedProgram, selectedYear]);
+    return areas
+      .filter(area => {
+        // Non-admin: filter by coveredAreas from personel_role
+        if (!isAdmin && userCoveredAreas.length > 0) {
+          const areaNameLower = area.area.toLowerCase().trim();
+          if (!userCoveredAreas.includes(areaNameLower)) return false;
+        }
+        return true;
+      })
+      .map(area => {
+        // Filter criteria within each area by academic program/year
+        const filteredCriteria = area.areaCriteria.filter(criteria => {
+          // Dropdown filters at criteria level
+          if (selectedProgram && String(criteria.academic_program?.id) !== selectedProgram) return false;
+          if (selectedYear && String(criteria.academic_year?.id) !== selectedYear) return false;
+
+          // Non-admin: filter by user's academic_program
+          if (!isAdmin && userAcademicProgram && criteria.academic_program?.programCode) {
+            if (criteria.academic_program.programCode !== userAcademicProgram) return false;
+          }
+
+          return true;
+        });
+
+        return { ...area, areaCriteria: filteredCriteria };
+      })
+      // Remove areas with no matching criteria (unless no filters applied)
+      .filter(area => {
+        if (!selectedProgram && !selectedYear && (isAdmin || !userAcademicProgram)) return true;
+        return area.areaCriteria.length > 0;
+      });
+  }, [areas, selectedProgram, selectedYear, isAdmin, userCoveredAreas, userAcademicProgram]);
 
   // Count uploads from filtered areas only
   const counts = useMemo(() => {

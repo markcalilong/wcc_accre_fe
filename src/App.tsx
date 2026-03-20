@@ -10,6 +10,7 @@ import AreaDetailPage from './pages/areas/AreaDetailPage';
 import AreaMonitoring from './pages/AreaMonitoring';
 import ConsolidateFiles from './pages/ConsolidateFiles';
 import UserManagement from './pages/UserManagement';
+import RoleManagement from './pages/RoleManagement';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardLayout from './components/DashboardLayout';
 import { ArrowLeft } from 'lucide-react';
@@ -141,6 +142,16 @@ export default function App() {
             <ProtectedRoute>
               <DashboardLayout>
                 <UserManagement />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/roles"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <RoleManagement />
               </DashboardLayout>
             </ProtectedRoute>
           }
