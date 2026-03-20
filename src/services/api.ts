@@ -78,7 +78,12 @@ export const api = {
       populate: {
         role: true,
         personel_role: {
-          populate: ['coveredAreas']
+          populate: {
+            coveredAreas: true,
+            coveredPrograms: {
+              populate: ['academic_program']
+            }
+          }
         }
       }
     }, { encodeValuesOnly: true });
@@ -369,7 +374,12 @@ export const api = {
     const query = qs.stringify({
       sort: ['role:asc'],
       pagination: { pageSize: 100 },
-      populate: ['coveredAreas']
+      populate: {
+        coveredAreas: true,
+        coveredPrograms: {
+          populate: ['academic_program']
+        }
+      }
     }, { encodeValuesOnly: true });
     const response = await fetch(`${BASE_URL}/api/personel-roles?${query}`, {
       method: 'GET',

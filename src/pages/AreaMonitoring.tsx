@@ -27,7 +27,7 @@ function StatusBadge({ status }: { status: 'none' | 'uploaded' | 'reviewed' | 'a
   }
 }
 
-function AreaSection({ area, onNavigate }: { area: Area; onNavigate: (id: string) => void }) {
+function AreaSection({ area, onNavigate }: { key?: any; area: Area; onNavigate: (id: string) => void }) {
   const [expanded, setExpanded] = useState(true);
 
   return (
@@ -40,17 +40,10 @@ function AreaSection({ area, onNavigate }: { area: Area; onNavigate: (id: string
           <div>
             <h3 className="text-lg font-bold text-zinc-900 uppercase tracking-tight">{area.area}</h3>
             {area.areaDesc && <p className="text-sm text-zinc-500 mt-1">{area.areaDesc}</p>}
-            <div className="flex items-center gap-3 mt-2">
-              {area.academic_program?.programCode && (
-                <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100 uppercase tracking-wider">
-                  {area.academic_program.programCode}
-                </span>
-              )}
-              {area.academic_year?.schoolyear && (
-                <span className="text-[10px] font-bold text-zinc-500 bg-zinc-50 px-2 py-0.5 rounded-full border border-zinc-100 uppercase tracking-wider">
-                  {area.academic_year.schoolyear}
-                </span>
-              )}
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-[10px] font-bold text-zinc-400 bg-zinc-50 px-2 py-0.5 rounded-full border border-zinc-100 uppercase tracking-wider">
+                {area.areaCriteria.length} criteria
+              </span>
             </div>
           </div>
           <div className="p-2 text-zinc-400">
@@ -83,7 +76,7 @@ function AreaSection({ area, onNavigate }: { area: Area; onNavigate: (id: string
   );
 }
 
-function CriteriaRow({ criteria }: { criteria: AreaCriteria }) {
+function CriteriaRow({ criteria }: { key?: any; criteria: AreaCriteria }) {
   const status = getUploadStatus(criteria.criteriaUploads);
 
   return (
@@ -175,8 +168,10 @@ export default function AreaMonitoring() {
     ) || [];
   }, [userData]);
 
-  const userAcademicProgram = useMemo(() => {
-    return userData?.academic_program || '';
+  const userCoveredProgramIds = useMemo(() => {
+    return userData?.personel_role?.coveredPrograms?.map(
+      (cp: any) => cp.academic_program?.id
+    ).filter(Boolean) || [];
   }, [userData]);
 
   // Filter areas and their criteria based on selections + user's role/coveredAreas/academicProgram
@@ -197,9 +192,9 @@ export default function AreaMonitoring() {
           if (selectedProgram && String(criteria.academic_program?.id) !== selectedProgram) return false;
           if (selectedYear && String(criteria.academic_year?.id) !== selectedYear) return false;
 
-          // Non-admin: filter by user's academic_program
-          if (!isAdmin && userAcademicProgram && criteria.academic_program?.programCode) {
-            if (criteria.academic_program.programCode !== userAcademicProgram) return false;
+          // Non-admin: filter by user's coveredPrograms from personel_role
+          if (!isAdmin && userCoveredProgramIds.length > 0 && criteria.academic_program?.id) {
+            if (!userCoveredProgramIds.includes(criteria.academic_program.id)) return false;
           }
 
           return true;
@@ -209,10 +204,10 @@ export default function AreaMonitoring() {
       })
       // Remove areas with no matching criteria (unless no filters applied)
       .filter(area => {
-        if (!selectedProgram && !selectedYear && (isAdmin || !userAcademicProgram)) return true;
+        if (!selectedProgram && !selectedYear && (isAdmin || userCoveredProgramIds.length === 0)) return true;
         return area.areaCriteria.length > 0;
       });
-  }, [areas, selectedProgram, selectedYear, isAdmin, userCoveredAreas, userAcademicProgram]);
+  }, [areas, selectedProgram, selectedYear, isAdmin, userCoveredAreas, userCoveredProgramIds]);
 
   // Count uploads from filtered areas only
   const counts = useMemo(() => {
