@@ -26,6 +26,25 @@ export const api = {
   },
 
   /**
+   * Update user profile fields (non-role fields)
+   */
+  updateUser: async (token: string, userId: number, data: Record<string, any>) => {
+    const response = await fetch(`${BASE_URL}/api/users/${userId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.error?.message || 'Failed to update user profile');
+    }
+    return result;
+  },
+
+  /**
    * Login user
    */
   login: async (data: any) => {

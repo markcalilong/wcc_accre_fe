@@ -1,8 +1,67 @@
 {
-  "hash": "7cd59ca1",
+  "hash": "f839c381",
   "configHash": "d91dc698",
-  "lockfileHash": "24a2e550",
-  "browserHash": "b3285840",
-  "optimized": {},
-  "chunks": {}
+  "lockfileHash": "f430a3fc",
+  "browserHash": "1409b441",
+  "optimized": {
+    "react/jsx-dev-runtime": {
+      "src": "../../node_modules/react/jsx-dev-runtime.js",
+      "file": "react_jsx-dev-runtime.js",
+      "fileHash": "df132ba6",
+      "needsInterop": true
+    },
+    "react": {
+      "src": "../../node_modules/react/index.js",
+      "file": "react.js",
+      "fileHash": "ebad483d",
+      "needsInterop": true
+    },
+    "react-dom/client": {
+      "src": "../../node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "de7fdff9",
+      "needsInterop": true
+    },
+    "react-router-dom": {
+      "src": "../../node_modules/react-router-dom/dist/index.mjs",
+      "file": "react-router-dom.js",
+      "fileHash": "7cc8f035",
+      "needsInterop": false
+    },
+    "lucide-react": {
+      "src": "../../node_modules/lucide-react/dist/esm/lucide-react.js",
+      "file": "lucide-react.js",
+      "fileHash": "037a3d33",
+      "needsInterop": false
+    },
+    "motion/react": {
+      "src": "../../node_modules/motion/dist/es/react.mjs",
+      "file": "motion_react.js",
+      "fileHash": "a574f99f",
+      "needsInterop": false
+    },
+    "pdf-lib": {
+      "src": "../../node_modules/pdf-lib/es/index.js",
+      "file": "pdf-lib.js",
+      "fileHash": "056b8ddd",
+      "needsInterop": false
+    },
+    "qs": {
+      "src": "../../node_modules/qs/lib/index.js",
+      "file": "qs.js",
+      "fileHash": "9b52692c",
+      "needsInterop": true
+    }
+  },
+  "chunks": {
+    "chunk-PQNA2MYG": {
+      "file": "chunk-PQNA2MYG.js"
+    },
+    "chunk-VQJW32E7": {
+      "file": "chunk-VQJW32E7.js"
+    },
+    "chunk-PR4QN5HX": {
+      "file": "chunk-PR4QN5HX.js"
+    }
+  }
 }
