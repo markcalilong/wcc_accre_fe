@@ -9,6 +9,7 @@ import AreaListPage from './pages/areas/AreaListPage';
 import AreaDetailPage from './pages/areas/AreaDetailPage';
 import AreaMonitoring from './pages/AreaMonitoring';
 import ConsolidateFiles from './pages/ConsolidateFiles';
+import UserManagement from './pages/UserManagement';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardLayout from './components/DashboardLayout';
 import { ArrowLeft } from 'lucide-react';
@@ -130,6 +131,16 @@ export default function App() {
             <ProtectedRoute>
               <DashboardLayout>
                 <ConsolidateFiles />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/users"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <UserManagement />
               </DashboardLayout>
             </ProtectedRoute>
           }
