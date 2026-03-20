@@ -75,7 +75,12 @@ export const api = {
     const userId = payload.id;
 
     const query = qs.stringify({
-      populate: ['role']
+      populate: {
+        role: true,
+        personel_role: {
+          populate: ['coveredAreas']
+        }
+      }
     }, { encodeValuesOnly: true });
     const response = await fetch(`${BASE_URL}/api/users/${userId}?${query}`, {
       method: 'GET',
@@ -237,10 +242,10 @@ export const api = {
       sort: ['createdAt:desc'],
       pagination: { pageSize: 100 },
       populate: {
-        academic_program: true,
-        academic_year: true,
         areaCriteria: {
           populate: {
+            academic_program: true,
+            academic_year: true,
             criteriaUploads: {
               populate: {
                 fileUpload: true,
@@ -279,10 +284,10 @@ export const api = {
     // Using deep population for nested criteria and uploads
     const query = qs.stringify({
       populate: {
-        academic_program: true,
-        academic_year: true,
         areaCriteria: {
           populate: {
+            academic_program: true,
+            academic_year: true,
             criteriaUploads: {
               populate: {
                 fileUpload: true,
@@ -355,6 +360,77 @@ export const api = {
     });
     if (!response.ok) throw new Error('Failed to delete area');
     return true;
+  },
+
+  /**
+   * Personel Roles CRUD
+   */
+  getPersonelRoles: async (token: string) => {
+    const query = qs.stringify({
+      sort: ['role:asc'],
+      pagination: { pageSize: 100 },
+      populate: ['coveredAreas']
+    }, { encodeValuesOnly: true });
+    const response = await fetch(`${BASE_URL}/api/personel-roles?${query}`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${token}` },
+      cache: 'no-store'
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error?.message || 'Failed to fetch personel roles');
+    return result.data;
+  },
+
+  createPersonelRole: async (token: string, data: any) => {
+    const response = await fetch(`${BASE_URL}/api/personel-roles`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error?.message || 'Failed to create personel role');
+    return result.data;
+  },
+
+  updatePersonelRole: async (token: string, id: string | number, data: any) => {
+    const response = await fetch(`${BASE_URL}/api/personel-roles/${id}`, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error?.message || 'Failed to update personel role');
+    return result.data;
+  },
+
+  deletePersonelRole: async (token: string, id: string | number) => {
+    const response = await fetch(`${BASE_URL}/api/personel-roles/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      const result = await response.json();
+      throw new Error(result.error?.message || 'Failed to delete personel role');
+    }
+    return true;
+  },
+
+  /**
+   * Get all users (for admin)
+   */
+  getUsers: async (token: string) => {
+    const query = qs.stringify({
+      populate: ['role', 'personel_role'],
+      pagination: { pageSize: 200 }
+    }, { encodeValuesOnly: true });
+    const response = await fetch(`${BASE_URL}/api/users?${query}`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${token}` },
+      cache: 'no-store'
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error?.message || 'Failed to fetch users');
+    return result;
   },
 
   /**

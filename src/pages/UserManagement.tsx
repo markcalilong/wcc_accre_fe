@@ -2,6 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2, AlertCircle, RefreshCw, Users, Search, Shield, ShieldCheck, ShieldX, CheckCircle2, XCircle, Edit3, X, Save, GraduationCap } from 'lucide-react';
 import { api } from '../services/api';
 
+interface PersonelRole {
+  id: number;
+  documentId: string;
+  role: string;
+  description: string;
+}
+
 interface UserRecord {
   id: number;
   documentId: string;
@@ -21,6 +28,7 @@ interface UserRecord {
     name: string;
     type: string;
   };
+  personel_role?: PersonelRole;
 }
 
 function StatusBadge({ blocked }: { blocked: boolean }) {
@@ -38,24 +46,33 @@ function StatusBadge({ blocked }: { blocked: boolean }) {
   );
 }
 
-function RoleBadge({ role }: { role?: { name: string } }) {
-  const name = role?.name || 'Unknown';
-  const colors: Record<string, string> = {
-    'Authenticated': 'bg-indigo-50 text-indigo-600 border-indigo-100',
-    'Faculty': 'bg-amber-50 text-amber-600 border-amber-100',
-    'Dean': 'bg-purple-50 text-purple-600 border-purple-100',
-    'Public': 'bg-zinc-50 text-zinc-500 border-zinc-200',
-  };
+function RoleBadge({ personelRole, strapiRole }: { personelRole?: PersonelRole; strapiRole?: { name: string } }) {
+  const name = personelRole?.role || strapiRole?.name || 'Unassigned';
+  const isPersonel = !!personelRole;
+
+  // Color based on permission level
+  const r = name.toLowerCase();
+  let colorClass = 'bg-zinc-50 text-zinc-500 border-zinc-200';
+  if (['dean', 'librarian', 'dsa', 'physical plant', 'admin'].includes(r)) {
+    colorClass = 'bg-emerald-50 text-emerald-600 border-emerald-100';
+  } else if (['program head', 'area coordinator'].includes(r)) {
+    colorClass = 'bg-blue-50 text-blue-600 border-blue-100';
+  } else if (['faculty', 'admin staff', 'library staff'].includes(r)) {
+    colorClass = 'bg-amber-50 text-amber-600 border-amber-100';
+  }
+
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${colors[name] || colors['Public']}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${colorClass}`}>
       <Shield className="w-3 h-3" /> {name}
+      {!isPersonel && name !== 'Unassigned' && <span className="opacity-50">(sys)</span>}
     </span>
   );
 }
 
-function EditUserModal({ user, programs, onClose, onSave }: {
+function EditUserModal({ user, programs, personelRoles, onClose, onSave }: {
   user: UserRecord;
   programs: any[];
+  personelRoles: PersonelRole[];
   onClose: () => void;
   onSave: (userId: number, data: Record<string, any>) => Promise<void>;
 }) {
@@ -65,6 +82,9 @@ function EditUserModal({ user, programs, onClose, onSave }: {
   const [birthDate, setBirthDate] = useState(user.birthDate || '');
   const [mobileNumber, setMobileNumber] = useState(user.mobileNumber || '');
   const [academicProgram, setAcademicProgram] = useState(user.academic_program || '');
+  const [selectedRoleId, setSelectedRoleId] = useState<string>(
+    user.personel_role ? String(user.personel_role.id) : ''
+  );
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -77,6 +97,7 @@ function EditUserModal({ user, programs, onClose, onSave }: {
         birthDate: birthDate || null,
         mobileNumber: mobileNumber.trim() || null,
         academic_program: academicProgram || null,
+        personel_role: selectedRoleId ? Number(selectedRoleId) : null,
       });
       onClose();
     } catch (err: any) {
@@ -90,7 +111,7 @@ function EditUserModal({ user, programs, onClose, onSave }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-lg mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+      <div className="w-full max-w-lg mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100 bg-zinc-50">
           <div className="flex items-center gap-3">
             <Edit3 className="w-5 h-5 text-indigo-600" />
@@ -100,7 +121,20 @@ function EditUserModal({ user, programs, onClose, onSave }: {
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+          {/* Personnel Role */}
+          <div className="p-4 rounded-xl bg-indigo-50/50 border border-indigo-100 space-y-2">
+            <label className="block text-xs font-bold text-indigo-600 uppercase tracking-widest">Personnel Role</label>
+            <select value={selectedRoleId} onChange={e => setSelectedRoleId(e.target.value)} className={`${inputClass} border-indigo-200 bg-white`}>
+              <option value="">No Role Assigned</option>
+              {personelRoles.map(r => (
+                <option key={r.id} value={r.id}>
+                  {r.role} {r.description ? `- ${r.description}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">First Name</label>
@@ -141,7 +175,6 @@ function EditUserModal({ user, programs, onClose, onSave }: {
               ))}
             </select>
           </div>
-          <p className="text-[10px] text-zinc-400 italic">Note: Role changes must be done in the Strapi admin panel.</p>
         </div>
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-zinc-100 bg-zinc-50">
           <button onClick={onClose} className="px-4 py-2 text-sm font-bold text-zinc-600 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-all">
@@ -164,6 +197,7 @@ function EditUserModal({ user, programs, onClose, onSave }: {
 export default function UserManagement() {
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [programs, setPrograms] = useState<any[]>([]);
+  const [personelRoles, setPersonelRoles] = useState<PersonelRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -178,14 +212,14 @@ export default function UserManagement() {
     setLoading(true);
     setError(null);
     try {
-      const [usersRes, programsRes] = await Promise.all([
-        fetch('https://wcc-accre.onrender.com/api/users?populate=role&pagination[pageSize]=100', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }).then(r => r.json()),
+      const [usersRes, programsRes, rolesRes] = await Promise.all([
+        api.getUsers(token),
         api.getAcademicPrograms().catch(() => []),
+        api.getPersonelRoles(token).catch(() => []),
       ]);
       setUsers(Array.isArray(usersRes) ? usersRes : []);
       setPrograms(programsRes);
+      setPersonelRoles(rolesRes);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch users');
     } finally {
@@ -229,13 +263,16 @@ export default function UserManagement() {
         (u.lastName || '').toLowerCase().includes(q);
       if (!match) return false;
     }
-    if (filterRole && u.role?.name !== filterRole) return false;
+    if (filterRole) {
+      const userRoleName = u.personel_role?.role || u.role?.name || 'Unassigned';
+      if (userRoleName !== filterRole) return false;
+    }
     if (filterStatus === 'active' && u.blocked) return false;
     if (filterStatus === 'blocked' && !u.blocked) return false;
     return true;
   });
 
-  const roles = [...new Set(users.map(u => u.role?.name).filter(Boolean))];
+  const roles = [...new Set(users.map(u => u.personel_role?.role || u.role?.name).filter(Boolean))];
 
   if (loading && users.length === 0) {
     return (
@@ -264,7 +301,7 @@ export default function UserManagement() {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {editingUser && (
-        <EditUserModal user={editingUser} programs={programs} onClose={() => setEditingUser(null)} onSave={handleSaveUser} />
+        <EditUserModal user={editingUser} programs={programs} personelRoles={personelRoles} onClose={() => setEditingUser(null)} onSave={handleSaveUser} />
       )}
 
       {/* Header */}
@@ -382,7 +419,7 @@ export default function UserManagement() {
                         <span className="text-xs text-zinc-300 italic">None</span>
                       )}
                     </td>
-                    <td className="px-4 py-3"><RoleBadge role={user.role} /></td>
+                    <td className="px-4 py-3"><RoleBadge personelRole={user.personel_role} strapiRole={user.role} /></td>
                     <td className="px-4 py-3"><StatusBadge blocked={user.blocked} /></td>
                     <td className="px-4 py-3 text-xs text-zinc-400">
                       {new Date(user.createdAt).toLocaleDateString()}

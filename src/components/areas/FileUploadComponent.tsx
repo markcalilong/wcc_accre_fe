@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Upload, FileText, Trash2, Loader2, CheckCircle2, Clock, AlertCircle, Eye, X, ExternalLink } from 'lucide-react';
 import { api } from '../../services/api';
 import { FileUploadMetadata } from '../../types/area';
+import { canApprove, canReview, canDelete as canDeleteFile, getAvailableStatuses } from '../../utils/roles';
 
 interface FileUploadComponentProps {
   uploads: FileUploadMetadata[];
@@ -107,10 +108,11 @@ export default function FileUploadComponent({
   isSubcriteria = false,
   userRole = ''
 }: FileUploadComponentProps) {
-  const roleLower = userRole.toLowerCase();
-  const canUpload = true; // All roles can upload
-  const canReview = roleLower === 'dean' || roleLower === 'authenticated';
-  const canDelete = canReview; // Only dean/authenticated can delete
+  const roleKey = userRole.toLowerCase().replace(/\s+/g, '_');
+  const hasReviewAccess = canReview(roleKey);
+  const hasApproveAccess = canApprove(roleKey);
+  const hasDeleteAccess = canDeleteFile(roleKey);
+  const availableStatuses = getAvailableStatuses(roleKey);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [viewingPdf, setViewingPdf] = useState<{ url: string; fileName: string } | null>(null);
@@ -263,24 +265,24 @@ export default function FileUploadComponent({
                       <Eye className="w-3.5 h-3.5" />
                     </button>
                   )}
-                  {canReview && (
-                    <>
-                      <select
-                        value={upload.fileStatus}
-                        onChange={(e) => onUpdateStatus(upload.id, e.target.value, upload.remarks || '')}
-                        className="text-[10px] font-bold bg-white border border-zinc-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      >
-                        <option value="On-going Review">Reviewing</option>
-                        <option value="Reviewed">Reviewed</option>
-                        <option value="Approved">Approved</option>
-                      </select>
-                      <button
-                        onClick={() => onDelete(upload.id)}
-                        className="p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </>
+                  {hasReviewAccess && availableStatuses.length > 0 && (
+                    <select
+                      value={upload.fileStatus}
+                      onChange={(e) => onUpdateStatus(upload.id, e.target.value, upload.remarks || '')}
+                      className="text-[10px] font-bold bg-white border border-zinc-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      {availableStatuses.map(s => (
+                        <option key={s} value={s}>{s === 'On-going Review' ? 'Reviewing' : s}</option>
+                      ))}
+                    </select>
+                  )}
+                  {hasDeleteAccess && (
+                    <button
+                      onClick={() => onDelete(upload.id)}
+                      className="p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   )}
                 </div>
               </div>
