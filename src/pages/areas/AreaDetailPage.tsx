@@ -4,6 +4,7 @@ import { ArrowLeft, Loader2, AlertCircle, RefreshCw, Layers, Calendar, Graduatio
 import { api } from '../../services/api';
 import { Area, AreaCriteria, FileUploadMetadata } from '../../types/area';
 import CriteriaCard from '../../components/areas/CriteriaCard';
+import { getUserPersonelRole } from '../../utils/roles';
 
 export default function AreaDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -36,7 +37,7 @@ export default function AreaDetailPage() {
     const token = localStorage.getItem('jwt');
     if (token) {
       api.getMe(token).then(user => {
-        setUserRole(user?.role?.name || user?.role?.type || '');
+        setUserRole(getUserPersonelRole(user));
       }).catch(() => {});
     }
   }, [fetchArea]);
@@ -46,6 +47,8 @@ export default function AreaDetailPage() {
       ...(typeof c.id === 'number' ? { id: c.id } : {}),
       code: c.code,
       desc: c.desc,
+      academic_program: c.academic_program?.id || c.academic_program || null,
+      academic_year: c.academic_year?.id || c.academic_year || null,
       criteriaUploads: c.criteriaUploads?.map((u: any) => {
         const fileData = Array.isArray(u.fileUpload) ? u.fileUpload[0] : u.fileUpload;
         const uploaderData = Array.isArray(u.uploader) ? u.uploader[0] : u.uploader;
@@ -303,25 +306,9 @@ export default function AreaDetailPage() {
             )}
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full md:w-auto">
-            <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-100 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white border border-zinc-100 flex items-center justify-center">
-                <GraduationCap className="w-5 h-5 text-zinc-400" />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Academic Program</p>
-                <p className="text-sm font-bold text-zinc-900">{(area.academic_program as any)?.attributes?.programCode || area.academic_program?.programCode || 'N/A'}</p>
-              </div>
-            </div>
-            <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-100 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white border border-zinc-100 flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-zinc-400" />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Academic Year</p>
-                <p className="text-sm font-bold text-zinc-900">{(area.academic_year as any)?.attributes?.schoolyear || area.academic_year?.schoolyear || 'N/A'}</p>
-              </div>
-            </div>
+          <div className="px-4 py-3 rounded-2xl bg-zinc-50 border border-zinc-100">
+            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Criteria Count</p>
+            <p className="text-2xl font-bold text-zinc-900 mt-1">{area.areaCriteria.length}</p>
           </div>
         </div>
       </div>

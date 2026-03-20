@@ -9,7 +9,26 @@
       "Bash(PGPASSWORD=OjaeLVdBKjOIPC4C3g9sXB3wnIznGLJe psql -h dpg-d6nq04s50q8c73ahdkp0-a.singapore-postgres.render.com -p 5432 -U wcc_accre_4s26_26pk_user -d wcc_accre_4s26_26pk -c \"SELECT * FROM up_users_role_lnk ORDER BY user_id;\")",
       "Bash(where psql:*)",
       "Bash(npm list:*)",
-      "Bash(node -e \"console.log\\(''node available''\\)\")"
+      "Bash(node -e \"console.log\\(''node available''\\)\")",
+      "Bash(npx tsc:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "Bash(node node_modules/vite/bin/vite.js --port 3000)",
+      "Bash(curl -s -X POST \"https://wcc-accre.onrender.com/api/auth/local\" -H \"Content-Type: application/json\" -d '{\"\"identifier\"\":\"\"wccadmin\"\",\"\"password\"\":\"\"wccadmin123\"\"}')",
+      "Bash(JWT=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTcsImlhdCI6MTc3Mzk4MDAyNCwiZXhwIjoxNzc2NTcyMDI0fQ.oiD4gr5yanxkNvAl-eh1w7n7yq9y9ItXoW4JAL1gTX0)",
+      "Bash(curl -s https://wcc-accre.onrender.com/api/users?populate=role -H 'Authorization: Bearer $JWT')",
+      "Bash(python3 -m json.tool)",
+      "Bash(python -m json.tool)",
+      "Bash(curl -s \"https://wcc-accre.onrender.com/api/users?filters[username]=mark123&populate=role\" -H 'Authorization: Bearer $JWT')",
+      "Bash(curl -s \"https://wcc-accre.onrender.com/api/users?filters\\\\[username\\\\]=mark123&populate=role\" -H \"Authorization: Bearer $JWT\")",
+      "Bash(curl -s \"https://wcc-accre.onrender.com/api/users?filters\\\\[role\\\\]\\\\[type\\\\]=faculty&populate=role\" -H 'Authorization: Bearer $JWT')",
+      "Bash(python3 -c \"import sys,json; data=json.load\\(sys.stdin\\); print\\(f''''Count: {len\\(data\\)}''''\\); print\\(json.dumps\\(data[0], indent=2\\)\\)\")",
+      "Bash(curl -s \"https://wcc-accre.onrender.com/api/users?filters[username][$contains]=mark&populate=role\" -H 'Authorization: Bearer $JWT')",
+      "Bash(python3 -c \"import sys,json; data=json.load\\(sys.stdin\\); print\\(f''''Count: {len\\(data\\)}''''\\); [print\\(u[''''username'''']\\) for u in data]\")",
+      "Bash(curl -s \"https://wcc-accre.onrender.com/api/users?filters\\\\[username\\\\]\\\\[$contains\\\\]=mark&populate=role\" -H 'Authorization: Bearer $JWT')",
+      "Bash(curl -s https://wcc-accre.onrender.com/api/users?populate=* -H 'Authorization: Bearer $JWT')",
+      "Bash(python3 -c \"import sys,json; data=json.load\\(sys.stdin\\); print\\(json.dumps\\(data[0], indent=2\\)\\)\")",
+      "Bash(npx vite:*)",
+      "Bash(node node_modules/vite/bin/vite.js build)"
     ]
   }
 }
