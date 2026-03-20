@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Loader2, AlertCircle, RefreshCw, Shield, Plus, Edit3, Trash2, X, Save, ChevronDown, ChevronUp, MapPin } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, Shield, Plus, Edit3, Trash2, X, Save, ChevronDown, ChevronUp, MapPin, GraduationCap } from 'lucide-react';
 import { api } from '../services/api';
+
+interface AcademicProgram {
+  id: number;
+  documentId?: string;
+  programCode?: string;
+  programDesc?: string;
+}
 
 interface PersonelRole {
   id: number;
@@ -8,6 +15,7 @@ interface PersonelRole {
   role: string;
   description: string;
   coveredAreas?: { id: number; area_with_permission: string }[];
+  coveredPrograms?: { id: number; academic_program?: AcademicProgram }[];
 }
 
 interface AreaItem {
@@ -16,9 +24,10 @@ interface AreaItem {
   area: string;
 }
 
-function RoleModal({ role, areas, onClose, onSave }: {
+function RoleModal({ role, areas, programs, onClose, onSave }: {
   role: PersonelRole | null;
   areas: AreaItem[];
+  programs: AcademicProgram[];
   onClose: () => void;
   onSave: (data: any) => Promise<void>;
 }) {
@@ -27,11 +36,20 @@ function RoleModal({ role, areas, onClose, onSave }: {
   const [selectedAreas, setSelectedAreas] = useState<string[]>(
     role?.coveredAreas?.map(a => a.area_with_permission) || []
   );
+  const [selectedProgramIds, setSelectedProgramIds] = useState<number[]>(
+    role?.coveredPrograms?.map(cp => cp.academic_program?.id).filter(Boolean) as number[] || []
+  );
   const [saving, setSaving] = useState(false);
 
   const toggleArea = (areaName: string) => {
     setSelectedAreas(prev =>
       prev.includes(areaName) ? prev.filter(a => a !== areaName) : [...prev, areaName]
+    );
+  };
+
+  const toggleProgram = (programId: number) => {
+    setSelectedProgramIds(prev =>
+      prev.includes(programId) ? prev.filter(id => id !== programId) : [...prev, programId]
     );
   };
 
@@ -43,6 +61,7 @@ function RoleModal({ role, areas, onClose, onSave }: {
         role: roleName.trim(),
         description: description.trim(),
         coveredAreas: selectedAreas.map(a => ({ area_with_permission: a })),
+        coveredPrograms: selectedProgramIds.map(id => ({ academic_program: programs.find(p => p.id === id)?.documentId || id })),
       });
       onClose();
     } catch (err: any) {
@@ -107,6 +126,38 @@ function RoleModal({ role, areas, onClose, onSave }: {
             </div>
             <p className="text-[10px] text-zinc-400 mt-1.5">{selectedAreas.length} area{selectedAreas.length !== 1 ? 's' : ''} selected</p>
           </div>
+          <div>
+            <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Covered Programs</label>
+            <div className="space-y-1.5 max-h-48 overflow-y-auto border border-zinc-100 rounded-xl p-3 bg-zinc-50/50">
+              {programs.length === 0 ? (
+                <p className="text-xs text-zinc-400 italic">No academic programs available.</p>
+              ) : (
+                programs.map(prog => {
+                  const isSelected = selectedProgramIds.includes(prog.id);
+                  return (
+                    <button
+                      key={prog.id}
+                      onClick={() => toggleProgram(prog.id)}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left text-xs font-medium transition-all ${
+                        isSelected
+                          ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                          : 'bg-white text-zinc-600 border border-zinc-100 hover:border-zinc-200'
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${
+                        isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-zinc-300'
+                      }`}>
+                        {isSelected && <span className="text-[8px]">✓</span>}
+                      </div>
+                      <GraduationCap className="w-3 h-3 shrink-0" />
+                      <span>{prog.programCode} — {prog.programDesc}</span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+            <p className="text-[10px] text-zinc-400 mt-1.5">{selectedProgramIds.length} program{selectedProgramIds.length !== 1 ? 's' : ''} selected</p>
+          </div>
         </div>
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-zinc-100 bg-zinc-50">
           <button onClick={onClose} className="px-4 py-2 text-sm font-bold text-zinc-600 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-all">
@@ -129,6 +180,7 @@ function RoleModal({ role, areas, onClose, onSave }: {
 export default function RoleManagement() {
   const [roles, setRoles] = useState<PersonelRole[]>([]);
   const [areas, setAreas] = useState<AreaItem[]>([]);
+  const [programs, setPrograms] = useState<AcademicProgram[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingRole, setEditingRole] = useState<PersonelRole | null | 'new'>(null);
@@ -140,12 +192,14 @@ export default function RoleManagement() {
     setLoading(true);
     setError(null);
     try {
-      const [rolesData, areasData] = await Promise.all([
+      const [rolesData, areasData, programsData] = await Promise.all([
         api.getPersonelRoles(token),
         api.getAreas(token),
+        api.getAcademicPrograms(token).catch(() => []),
       ]);
       setRoles(rolesData);
       setAreas(areasData.map((a: any) => ({ id: a.id, documentId: a.documentId, area: a.area })));
+      setPrograms(programsData);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch data');
     } finally {
@@ -211,6 +265,7 @@ export default function RoleManagement() {
         <RoleModal
           role={editingRole === 'new' ? null : editingRole}
           areas={areas}
+          programs={programs}
           onClose={() => setEditingRole(null)}
           onSave={handleSave}
         />
@@ -283,13 +338,17 @@ export default function RoleManagement() {
                     <p className="text-xs text-zinc-400 mt-0.5">{role.description || 'No description'}</p>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    {role.coveredAreas && role.coveredAreas.length > 0 && (
+                    {((role.coveredAreas && role.coveredAreas.length > 0) || (role.coveredPrograms && role.coveredPrograms.length > 0)) && (
                       <button
                         onClick={() => setExpandedRole(isExpanded ? null : role.id)}
                         className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-zinc-400 hover:text-indigo-600 bg-zinc-50 border border-zinc-100 rounded-lg hover:bg-indigo-50 hover:border-indigo-200 transition-all"
                       >
-                        <MapPin className="w-3 h-3" />
-                        {role.coveredAreas.length}
+                        {role.coveredAreas && role.coveredAreas.length > 0 && (
+                          <span className="flex items-center gap-0.5"><MapPin className="w-3 h-3" />{role.coveredAreas.length}</span>
+                        )}
+                        {role.coveredPrograms && role.coveredPrograms.length > 0 && (
+                          <span className="flex items-center gap-0.5"><GraduationCap className="w-3 h-3" />{role.coveredPrograms.length}</span>
+                        )}
                         {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                       </button>
                     )}
@@ -301,16 +360,34 @@ export default function RoleManagement() {
                     </button>
                   </div>
                 </div>
-                {isExpanded && role.coveredAreas && role.coveredAreas.length > 0 && (
-                  <div className="px-4 pb-4 pt-0">
-                    <div className="flex flex-wrap gap-1.5 pl-14">
-                      {role.coveredAreas.map((a, i) => (
-                        <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-zinc-50 text-zinc-600 border border-zinc-100">
-                          <MapPin className="w-3 h-3 text-zinc-400" />
-                          {a.area_with_permission}
-                        </span>
-                      ))}
-                    </div>
+                {isExpanded && (
+                  <div className="px-4 pb-4 pt-0 space-y-2">
+                    {role.coveredAreas && role.coveredAreas.length > 0 && (
+                      <div>
+                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest pl-14 mb-1">Covered Areas</p>
+                        <div className="flex flex-wrap gap-1.5 pl-14">
+                          {role.coveredAreas.map((a, i) => (
+                            <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-zinc-50 text-zinc-600 border border-zinc-100">
+                              <MapPin className="w-3 h-3 text-zinc-400" />
+                              {a.area_with_permission}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {role.coveredPrograms && role.coveredPrograms.length > 0 && (
+                      <div>
+                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest pl-14 mb-1">Covered Programs</p>
+                        <div className="flex flex-wrap gap-1.5 pl-14">
+                          {role.coveredPrograms.map((cp, i) => (
+                            <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100">
+                              <GraduationCap className="w-3 h-3 text-indigo-400" />
+                              {cp.academic_program?.programCode || 'Unknown'}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
