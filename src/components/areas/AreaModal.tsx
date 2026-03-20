@@ -20,8 +20,6 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
   const [formData, setFormData] = useState({
     area: '',
     areaDesc: '',
-    academic_program: '',
-    academic_year: '',
     proposedExhibits: '',
     remarks: '',
     areaCriteria: [] as any[]
@@ -34,18 +32,18 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
         setFormData({
           area: area.area || '',
           areaDesc: area.areaDesc || '',
-          academic_program: area.academic_program?.id?.toString() || '',
-          academic_year: area.academic_year?.id?.toString() || '',
           proposedExhibits: area.proposedExhibits || '',
           remarks: area.remarks || '',
-          areaCriteria: area.areaCriteria || []
+          areaCriteria: area.areaCriteria?.map(c => ({
+            ...c,
+            academic_program: c.academic_program?.id?.toString() || '',
+            academic_year: c.academic_year?.id?.toString() || '',
+          })) || []
         });
       } else {
         setFormData({
           area: '',
           areaDesc: '',
-          academic_program: '',
-          academic_year: '',
           proposedExhibits: '',
           remarks: '',
           areaCriteria: []
@@ -97,13 +95,13 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
 
       const payload = {
         ...formData,
-        academic_program: formData.academic_program ? Number(formData.academic_program) : null,
-        academic_year: formData.academic_year ? Number(formData.academic_year) : null,
         areaCriteria: formData.areaCriteria.map(c => {
           const { documentId: _cDocId, id: cId, ...restC } = c;
           return {
             ...restC,
             ...(typeof cId === 'number' ? { id: cId } : {}),
+            academic_program: c.academic_program ? Number(c.academic_program) : null,
+            academic_year: c.academic_year ? Number(c.academic_year) : null,
             criteriaUploads: cleanUploads(c.criteriaUploads || []),
             subcriteria: (c.subcriteria || []).map((sc: any) => {
               const { documentId: _scDocId, id: scId, ...restSc } = sc;
@@ -139,7 +137,7 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
       ...formData,
       areaCriteria: [
         ...formData.areaCriteria,
-        { code: '', desc: '', subcriteria: [] }
+        { code: '', desc: '', academic_program: '', academic_year: '', subcriteria: [] }
       ]
     });
   };
@@ -311,36 +309,6 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest px-1">Program</label>
-                  <select
-                    required
-                    value={formData.academic_program}
-                    onChange={(e) => setFormData({ ...formData, academic_program: e.target.value })}
-                    className="w-full px-5 py-4 bg-zinc-50 border border-zinc-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none"
-                  >
-                    <option value="">Select Program</option>
-                    {programs.map(p => (
-                      <option key={p.id} value={p.id}>{p.attributes?.programCode || p.programCode}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest px-1">Academic Year</label>
-                  <select
-                    required
-                    value={formData.academic_year}
-                    onChange={(e) => setFormData({ ...formData, academic_year: e.target.value })}
-                    className="w-full px-5 py-4 bg-zinc-50 border border-zinc-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none"
-                  >
-                    <option value="">Select Year</option>
-                    {years.map(y => (
-                      <option key={y.id} value={y.id}>{y.attributes?.schoolyear || y.schoolyear}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
             </div>
 
             <div className="space-y-6">
@@ -411,6 +379,34 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
                         className="w-full px-4 py-3 bg-white border border-zinc-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
                         placeholder="Criteria description..."
                       />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 mt-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest px-1">Program</label>
+                      <select
+                        value={c.academic_program || ''}
+                        onChange={(e) => updateCriteria(idx, 'academic_program', e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-zinc-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-xs appearance-none"
+                      >
+                        <option value="">No Program (General)</option>
+                        {programs.map(p => (
+                          <option key={p.id} value={p.id}>{p.attributes?.programCode || p.programCode}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest px-1">Academic Year</label>
+                      <select
+                        value={c.academic_year || ''}
+                        onChange={(e) => updateCriteria(idx, 'academic_year', e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-zinc-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-xs appearance-none"
+                      >
+                        <option value="">No Year</option>
+                        {years.map(y => (
+                          <option key={y.id} value={y.id}>{y.attributes?.schoolyear || y.schoolyear}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 

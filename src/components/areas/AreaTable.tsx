@@ -20,15 +20,14 @@ export default function AreaTable({ areas, onDelete, onEdit }: AreaTableProps) {
             <tr className="bg-zinc-50 border-b border-zinc-100">
               <th className="px-8 py-5 text-xs font-bold text-zinc-400 uppercase tracking-widest">Area Name</th>
               <th className="px-8 py-5 text-xs font-bold text-zinc-400 uppercase tracking-widest">Description</th>
-              <th className="px-8 py-5 text-xs font-bold text-zinc-400 uppercase tracking-widest">Program</th>
-              <th className="px-8 py-5 text-xs font-bold text-zinc-400 uppercase tracking-widest">Academic Year</th>
+              <th className="px-8 py-5 text-xs font-bold text-zinc-400 uppercase tracking-widest">Criteria</th>
               <th className="px-8 py-5 text-xs font-bold text-zinc-400 uppercase tracking-widest text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-50">
             {areas.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-8 py-12 text-center text-zinc-400">
+                <td colSpan={4} className="px-8 py-12 text-center text-zinc-400">
                   No areas found. Create one to get started.
                 </td>
               </tr>
@@ -42,12 +41,9 @@ export default function AreaTable({ areas, onDelete, onEdit }: AreaTableProps) {
                     <p className="text-sm text-zinc-500 line-clamp-1 max-w-xs">{area.areaDesc}</p>
                   </td>
                   <td className="px-8 py-6">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
-                      {(area.academic_program as any)?.attributes?.programCode || area.academic_program?.programCode || 'N/A'}
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-50 text-zinc-600 border border-zinc-100">
+                      {area.areaCriteria?.length || 0} criteria
                     </span>
-                  </td>
-                  <td className="px-8 py-6 text-sm text-zinc-500">
-                    {(area.academic_year as any)?.attributes?.schoolyear || area.academic_year?.schoolyear || 'N/A'}
                   </td>
                   <td className="px-8 py-6">
                     <div className="flex items-center justify-end gap-2">
