@@ -20,6 +20,7 @@ const SIDEBAR_ITEMS = [
   { id: 'academic-years', label: 'Academic Year Management', icon: FileText, path: '/dashboard/academic-years' },
   { id: 'academic-programs', label: 'Academic Program Management', icon: GraduationCap, path: '/dashboard/academic-programs' },
   { id: 'consolidate', label: 'Consolidate Files', icon: Layers, path: '/dashboard/consolidate' },
+  { id: 'users', label: 'User Management', icon: Users, path: '/dashboard/users' },
 ];
 
 interface DashboardLayoutProps {
