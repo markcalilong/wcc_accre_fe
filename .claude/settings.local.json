@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(node -e \"console.log\\(process.execPath\\)\")",
+      "Bash(node -e \":*)",
+      "Bash(PGPASSWORD=OjaeLVdBKjOIPC4C3g9sXB3wnIznGLJe psql -h dpg-d6nq04s50q8c73ahdkp0-a.singapore-postgres.render.com -p 5432 -U wcc_accre_4s26_26pk_user -d wcc_accre_4s26_26pk -c \"SELECT * FROM up_users_role_lnk ORDER BY user_id;\")",
+      "Bash(where psql:*)",
+      "Bash(npm list:*)",
+      "Bash(node -e \"console.log\\(''node available''\\)\")"
+    ]
+  }
+}

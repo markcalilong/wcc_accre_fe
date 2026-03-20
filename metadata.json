@@ -1,0 +1,5 @@
+{
+  "name": "Strapi Auth App",
+  "description": "A complete authentication system with Login, Register, and Dashboard pages using a Strapi backend.",
+  "requestFramePermissions": []
+}
