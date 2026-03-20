@@ -1,12 +1,13 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../services/api';
-import { LogIn, Loader2, AlertCircle } from 'lucide-react';
+import { LogIn, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import Navbar from '../components/Navbar';
 
 export default function Login() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -17,16 +18,23 @@ export default function Login() {
     setError('');
 
     try {
-      const data = await api.login({ 
-        identifier: identifier.trim(), 
-        password: password.trim() 
+      const data = await api.login({
+        identifier: identifier.trim(),
+        password: password.trim()
       });
       // Store JWT in localStorage
       localStorage.setItem('jwt', data.jwt);
       localStorage.setItem('user', JSON.stringify(data.user));
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.message);
+      const msg = err.message || '';
+      if (msg.includes('Internal Server Error') || msg.includes('500')) {
+        setError('Unable to sign in. Please check your credentials or your account may not yet be activated by the administrator.');
+      } else if (msg.includes('Invalid identifier or password')) {
+        setError('Invalid email/username or password. Please try again.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -67,14 +75,23 @@ export default function Login() {
 
           <div>
             <label className="block text-sm font-medium text-zinc-700 mb-1.5">Password</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none"
-              placeholder="••••••••"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 pr-11 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none"
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition-colors"
+              >
+                {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
+              </button>
+            </div>
           </div>
 
           <button
