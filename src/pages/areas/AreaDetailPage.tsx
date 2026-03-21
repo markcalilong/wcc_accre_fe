@@ -320,34 +320,55 @@ export default function AreaDetailPage() {
           // Filter criteria by user's program access
           const isAdmin = hasManagementAccess(userRole);
 
-          // Collect all program codes the user has access to:
-          // 1. From user's own academic_program field (plain string like "BSIT")
-          // 2. From role's coveredPrograms (for Deans managing multiple programs)
-          const userProgramCodes: string[] = [];
+          // allowedCriteria on the role controls BOTH visibility and upload permissions.
+          // Format: "BSBA:B.1,BSBA:B.2" — program-qualified criteria codes
+          // If allowedCriteria is set for this area → only show matching criteria
+          // If allowedCriteria is empty → fall back to program-based filter (user's academic_program + coveredPrograms)
 
-          // academic_program on user can be a string or a relation object
-          const userOwnProgram = typeof userData?.academic_program === 'string'
-            ? userData.academic_program
-            : userData?.academic_program?.programCode;
-          if (userOwnProgram && userOwnProgram.trim()) {
-            userProgramCodes.push(userOwnProgram.toLowerCase().trim());
-          }
+          // Get allowedCriteria for this specific area from the user's role
+          const coveredAreas = userData?.personel_role?.coveredAreas || [];
+          const matchingCoveredArea = coveredAreas.find(
+            (a: any) => (a.area_with_permission || '').toLowerCase().trim() === area.area.toLowerCase().trim()
+          );
+          const allowedCriteriaStr = matchingCoveredArea?.allowedCriteria?.trim() || '';
 
-          const roleCoveredPrograms = userData?.personel_role?.coveredPrograms || [];
-          for (const cp of roleCoveredPrograms) {
-            const code = cp.academic_program?.programCode;
-            if (code && !userProgramCodes.includes(code.toLowerCase().trim())) {
-              userProgramCodes.push(code.toLowerCase().trim());
+          let filteredCriteria = area.areaCriteria;
+
+          if (!isAdmin) {
+            if (allowedCriteriaStr) {
+              // Role has specific criteria selected → only show those exact program:code matches
+              const allowedEntries = allowedCriteriaStr.split(',').map((c: string) => c.trim().toLowerCase());
+              filteredCriteria = area.areaCriteria.filter(c => {
+                const progCode = c.academic_program?.programCode?.toLowerCase().trim() || '';
+                const code = c.code.toLowerCase().trim();
+                // Match "PROGRAM:CODE" format
+                const qualifiedKey = progCode ? `${progCode}:${code}` : code;
+                return allowedEntries.includes(qualifiedKey) || (!progCode && allowedEntries.includes(code));
+              });
+            } else {
+              // No specific criteria selected → fall back to program-based filter
+              const userProgramCodes: string[] = [];
+              const roleCoveredPrograms = userData?.personel_role?.coveredPrograms || [];
+              for (const cp of roleCoveredPrograms) {
+                const code = cp.academic_program?.programCode;
+                if (code && !userProgramCodes.includes(code.toLowerCase().trim())) {
+                  userProgramCodes.push(code.toLowerCase().trim());
+                }
+              }
+              const userOwnProgram = typeof userData?.academic_program === 'string'
+                ? userData.academic_program
+                : userData?.academic_program?.programCode;
+              if (userOwnProgram && userOwnProgram.trim() && !userProgramCodes.includes(userOwnProgram.toLowerCase().trim())) {
+                userProgramCodes.push(userOwnProgram.toLowerCase().trim());
+              }
+              if (userProgramCodes.length > 0) {
+                filteredCriteria = area.areaCriteria.filter(c => {
+                  if (!c.academic_program?.programCode) return true;
+                  return userProgramCodes.includes(c.academic_program.programCode.toLowerCase().trim());
+                });
+              }
             }
           }
-
-          const filteredCriteria = isAdmin || userProgramCodes.length === 0
-            ? area.areaCriteria
-            : area.areaCriteria.filter(c => {
-                // If criteria has no program assigned, show it to everyone
-                if (!c.academic_program?.programCode) return true;
-                return userProgramCodes.includes(c.academic_program.programCode.toLowerCase().trim());
-              });
 
           return (
             <>
@@ -375,7 +396,7 @@ export default function AreaDetailPage() {
                       onDeleteUpload={handleDeleteUpload}
                       onUpdateUploadStatus={handleUpdateUploadStatus}
                       userRole={userRole}
-                      canUpload={userData ? canUploadToCriteria(userData, area.area, criteria.code) : true}
+                      canUpload={userData ? canUploadToCriteria(userData, area.area, criteria.code, criteria.academic_program?.programCode) : true}
                     />
                   ))
                 )}

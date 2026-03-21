@@ -78,8 +78,9 @@ export function getAvailableStatuses(role: string): string[] {
 }
 
 // Check if a user can upload to a specific criteria within an area
-// Returns true if: no allowedCriteria set (empty = all), or criteriaCode is in the list
-export function canUploadToCriteria(user: any, areaName: string, criteriaCode: string): boolean {
+// allowedCriteria format: "BSIT:B.1,BSBA:B.2" (program-qualified) or "B.1,B.2" (legacy, matches any program)
+// programCode is optional — if provided, checks program-qualified match
+export function canUploadToCriteria(user: any, areaName: string, criteriaCode: string, programCode?: string): boolean {
   const role = getUserPersonelRole(user);
   const r = normalizeRole(role);
 
@@ -99,8 +100,24 @@ export function canUploadToCriteria(user: any, areaName: string, criteriaCode: s
   if (!allowed || allowed.trim() === '') return true;
 
   // Check if the criteria code is in the allowed list
-  const allowedCodes = allowed.split(',').map((c: string) => c.trim().toLowerCase());
-  return allowedCodes.includes(criteriaCode.toLowerCase().trim());
+  // Supports both "PROGRAM:CODE" (new) and plain "CODE" (legacy) formats
+  const allowedEntries = allowed.split(',').map((c: string) => c.trim().toLowerCase());
+  const codeLC = criteriaCode.toLowerCase().trim();
+  const progLC = programCode?.toLowerCase().trim();
+
+  return allowedEntries.some(entry => {
+    if (entry.includes(':')) {
+      // Program-qualified: "bsit:b.1"
+      const [entryProg, entryCode] = entry.split(':');
+      if (progLC) {
+        return entryProg === progLC && entryCode === codeLC;
+      }
+      // No program provided — match just by code (backward compat)
+      return entryCode === codeLC;
+    }
+    // Legacy plain code: "b.1" — matches any program
+    return entry === codeLC;
+  });
 }
 
 // Get allowed criteria codes for a user in a specific area
