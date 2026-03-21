@@ -39,7 +39,10 @@
       "Bash(grep -oE '\\(FACULTY|INSTRUCTION|LIBRARY|LABORATORIES|STUDENT SERVICES|PHYSICAL PLANT|PHILOSOPHY|SOCIAL ORIENTATION|ORGANIZATION\\)[^\"\"\"\"\\\\\\\\]*')",
       "Bash(grep -oE '\\(FACULTY|INSTRUCTION|LIBRARY|LABORATORIES|STUDENT SERVICES|PHYSICAL PLANT|PHILOSOPHY|SOCIAL ORIENTATION|ORGANIZATION\\)[^\"\"\"\"\\\\\\\\n]{0,30}' ca71d891-78e6-4b35-b1e0-3ca2ad2c64d0.jsonl)",
       "Bash(grep -oiE '\\(faculty|instruction|library|laboratories|student.services|physical.plant|philosophy|social.orientation|organization\\)[^\"\"\"\"\\\\\\\\a-z]{0,5}\\(BSIT|BSED|BSBA|BSA[^a-z]|BSHM|BSAIS|Crim|HRM|ABPol|CRIMINOLOGY|ABPolSci\\)' ca71d891-78e6-4b35-b1e0-3ca2ad2c64d0.jsonl)",
-      "Bash(node seed-areas.js)"
+      "Bash(node seed-areas.js)",
+      "WebFetch(domain:wcc-accre.onrender.com)",
+      "Bash(curl -s -X POST https://wcc-accre.onrender.com/api/auth/local -H \"Content-Type: application/json\" -d '{\"\"\"\"identifier\"\"\"\":\"\"\"\"wccfaculty\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"Faculty123\"\"\"\"}')",
+      "Bash(curl -s -X POST https://wcc-accre.onrender.com/admin/login -H \"Content-Type: application/json\" -d '{\"\"\"\"email\"\"\"\":\"\"\"\"admin@gmail.com\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"Admin123\"\"\"\"}')"
     ]
   }
 }
