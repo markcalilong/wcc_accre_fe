@@ -168,10 +168,25 @@ export default function AreaMonitoring() {
     ) || [];
   }, [userData]);
 
-  const userCoveredProgramIds = useMemo(() => {
-    return userData?.personel_role?.coveredPrograms?.map(
-      (cp: any) => cp.academic_program?.id
-    ).filter(Boolean) || [];
+  // Collect all program codes the user has access to:
+  // 1. User's own academic_program (plain string like "BSIT")
+  // 2. Role's coveredPrograms (for Deans managing multiple programs)
+  const userProgramCodes = useMemo(() => {
+    const codes: string[] = [];
+    const userOwnProgram = typeof userData?.academic_program === 'string'
+      ? userData.academic_program
+      : userData?.academic_program?.programCode;
+    if (userOwnProgram && userOwnProgram.trim()) {
+      codes.push(userOwnProgram.toLowerCase().trim());
+    }
+    const roleCoveredPrograms = userData?.personel_role?.coveredPrograms || [];
+    for (const cp of roleCoveredPrograms) {
+      const code = cp.academic_program?.programCode;
+      if (code && !codes.includes(code.toLowerCase().trim())) {
+        codes.push(code.toLowerCase().trim());
+      }
+    }
+    return codes;
   }, [userData]);
 
   // Filter areas and their criteria based on selections + user's role/coveredAreas/academicProgram
@@ -192,9 +207,9 @@ export default function AreaMonitoring() {
           if (selectedProgram && String(criteria.academic_program?.id) !== selectedProgram) return false;
           if (selectedYear && String(criteria.academic_year?.id) !== selectedYear) return false;
 
-          // Non-admin: filter by user's coveredPrograms from personel_role
-          if (!isAdmin && userCoveredProgramIds.length > 0 && criteria.academic_program?.id) {
-            if (!userCoveredProgramIds.includes(criteria.academic_program.id)) return false;
+          // Non-admin: filter by user's program access
+          if (!isAdmin && userProgramCodes.length > 0 && criteria.academic_program?.programCode) {
+            if (!userProgramCodes.includes(criteria.academic_program.programCode.toLowerCase().trim())) return false;
           }
 
           return true;
@@ -204,10 +219,10 @@ export default function AreaMonitoring() {
       })
       // Remove areas with no matching criteria (unless no filters applied)
       .filter(area => {
-        if (!selectedProgram && !selectedYear && (isAdmin || userCoveredProgramIds.length === 0)) return true;
+        if (!selectedProgram && !selectedYear && (isAdmin || userProgramCodes.length === 0)) return true;
         return area.areaCriteria.length > 0;
       });
-  }, [areas, selectedProgram, selectedYear, isAdmin, userCoveredAreas, userCoveredProgramIds]);
+  }, [areas, selectedProgram, selectedYear, isAdmin, userCoveredAreas, userProgramCodes]);
 
   // Count uploads from filtered areas only
   const counts = useMemo(() => {

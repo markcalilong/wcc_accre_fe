@@ -444,6 +444,44 @@ export const api = {
   },
 
   /**
+   * Sync allowedCriteria in all personel roles when criteria codes change
+   * oldToNewMap: { "B.1": "B.1.1", "B.2": null } — null means deleted
+   */
+  syncAllowedCriteria: async (token: string, areaName: string, oldToNewMap: Record<string, string | null>) => {
+    const roles = await api.getPersonelRoles(token);
+    for (const role of roles) {
+      const coveredAreas = role.coveredAreas || [];
+      let needsUpdate = false;
+      const updatedAreas = coveredAreas.map((a: any) => {
+        if (a.area_with_permission !== areaName) return a;
+        if (!a.allowedCriteria || a.allowedCriteria.trim() === '') return a;
+
+        const codes = a.allowedCriteria.split(',').map((c: string) => c.trim()).filter(Boolean);
+        const newCodes = codes
+          .map((code: string) => {
+            if (code in oldToNewMap) {
+              needsUpdate = true;
+              return oldToNewMap[code]; // null = deleted, string = renamed
+            }
+            return code;
+          })
+          .filter(Boolean) as string[];
+
+        return { ...a, allowedCriteria: newCodes.join(',') };
+      });
+
+      if (needsUpdate) {
+        await api.updatePersonelRole(token, role.documentId, {
+          coveredAreas: updatedAreas.map((a: any) => ({
+            area_with_permission: a.area_with_permission,
+            allowedCriteria: a.allowedCriteria || '',
+          })),
+        });
+      }
+    }
+  },
+
+  /**
    * File Upload
    */
   getFileById: async (token: string, fileId: number) => {

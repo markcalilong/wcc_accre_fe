@@ -118,7 +118,38 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
       console.log('Submitting Area Payload:', payload);
 
       if (area) {
+        // Detect criteria code changes for sync
+        const oldCriteria = area.areaCriteria || [];
+        const newCriteria = formData.areaCriteria || [];
+        const oldToNewMap: Record<string, string | null> = {};
+        let hasCodeChanges = false;
+
+        // Match by id to detect renames
+        for (const oldC of oldCriteria) {
+          const matchingNew = newCriteria.find((nc: any) => nc.id === oldC.id);
+          if (!matchingNew) {
+            // Criteria was deleted
+            if (oldC.code) {
+              oldToNewMap[oldC.code] = null;
+              hasCodeChanges = true;
+            }
+          } else if (matchingNew.code !== oldC.code && oldC.code) {
+            // Criteria code was renamed
+            oldToNewMap[oldC.code] = matchingNew.code;
+            hasCodeChanges = true;
+          }
+        }
+
         await api.updateArea(token, area.documentId || area.id, payload);
+
+        // Sync allowedCriteria in roles if any codes changed
+        if (hasCodeChanges) {
+          try {
+            await api.syncAllowedCriteria(token, area.area, oldToNewMap);
+          } catch (syncErr) {
+            console.warn('Failed to sync allowedCriteria in roles:', syncErr);
+          }
+        }
       } else {
         await api.createArea(token, payload);
       }

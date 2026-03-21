@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Loader2, AlertCircle, RefreshCw, Shield, Plus, Edit3, Trash2, X, Save, ChevronDown, ChevronUp, MapPin, GraduationCap } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, Shield, Plus, Edit3, Trash2, X, Save, ChevronDown, ChevronUp, MapPin, GraduationCap, FileText } from 'lucide-react';
 import { api } from '../services/api';
+import { Area, AreaCriteria } from '../types/area';
 
 interface AcademicProgram {
   id: number;
@@ -14,7 +15,7 @@ interface PersonelRole {
   documentId: string;
   role: string;
   description: string;
-  coveredAreas?: { id: number; area_with_permission: string }[];
+  coveredAreas?: { id: number; area_with_permission: string; allowedCriteria?: string }[];
   coveredPrograms?: { id: number; academic_program?: AcademicProgram }[];
 }
 
@@ -22,6 +23,7 @@ interface AreaItem {
   id: number;
   documentId?: string;
   area: string;
+  areaCriteria?: AreaCriteria[];
 }
 
 function RoleModal({ role, areas, programs, onClose, onSave }: {
@@ -36,15 +38,50 @@ function RoleModal({ role, areas, programs, onClose, onSave }: {
   const [selectedAreas, setSelectedAreas] = useState<string[]>(
     role?.coveredAreas?.map(a => a.area_with_permission) || []
   );
+  // Track allowed criteria per area: { "Faculty": ["B.1", "B.2"], "Instruction": [] }
+  const [allowedCriteriaMap, setAllowedCriteriaMap] = useState<Record<string, string[]>>(() => {
+    const map: Record<string, string[]> = {};
+    role?.coveredAreas?.forEach(a => {
+      const codes = a.allowedCriteria ? a.allowedCriteria.split(',').map(c => c.trim()).filter(Boolean) : [];
+      map[a.area_with_permission] = codes;
+    });
+    return map;
+  });
+  const [expandedAreaCriteria, setExpandedAreaCriteria] = useState<string | null>(null);
   const [selectedProgramIds, setSelectedProgramIds] = useState<number[]>(
     role?.coveredPrograms?.map(cp => cp.academic_program?.id).filter(Boolean) as number[] || []
   );
   const [saving, setSaving] = useState(false);
 
   const toggleArea = (areaName: string) => {
-    setSelectedAreas(prev =>
-      prev.includes(areaName) ? prev.filter(a => a !== areaName) : [...prev, areaName]
-    );
+    setSelectedAreas(prev => {
+      if (prev.includes(areaName)) {
+        // Remove area and its criteria
+        const newMap = { ...allowedCriteriaMap };
+        delete newMap[areaName];
+        setAllowedCriteriaMap(newMap);
+        return prev.filter(a => a !== areaName);
+      }
+      return [...prev, areaName];
+    });
+  };
+
+  const toggleCriteria = (areaName: string, criteriaCode: string) => {
+    setAllowedCriteriaMap(prev => {
+      const current = prev[areaName] || [];
+      const updated = current.includes(criteriaCode)
+        ? current.filter(c => c !== criteriaCode)
+        : [...current, criteriaCode];
+      return { ...prev, [areaName]: updated };
+    });
+  };
+
+  const toggleAllCriteria = (areaName: string, allCodes: string[]) => {
+    setAllowedCriteriaMap(prev => {
+      const current = prev[areaName] || [];
+      const allSelected = allCodes.every(c => current.includes(c));
+      return { ...prev, [areaName]: allSelected ? [] : [...allCodes] };
+    });
   };
 
   const toggleProgram = (programId: number) => {
@@ -60,7 +97,10 @@ function RoleModal({ role, areas, programs, onClose, onSave }: {
       await onSave({
         role: roleName.trim(),
         description: description.trim(),
-        coveredAreas: selectedAreas.map(a => ({ area_with_permission: a })),
+        coveredAreas: selectedAreas.map(a => ({
+          area_with_permission: a,
+          allowedCriteria: (allowedCriteriaMap[a] || []).join(','),
+        })),
         coveredPrograms: selectedProgramIds.map(id => ({ academic_program: programs.find(p => p.id === id)?.documentId || id })),
       });
       onClose();
@@ -69,6 +109,11 @@ function RoleModal({ role, areas, programs, onClose, onSave }: {
     } finally {
       setSaving(false);
     }
+  };
+
+  const getAreaCriteria = (areaName: string): AreaCriteria[] => {
+    const area = areas.find(a => a.area === areaName);
+    return area?.areaCriteria || [];
   };
 
   const inputClass = "w-full px-3 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all";
@@ -95,31 +140,96 @@ function RoleModal({ role, areas, programs, onClose, onSave }: {
             <input type="text" value={description} onChange={e => setDescription(e.target.value)} className={inputClass} placeholder="e.g. Dean - Approver" />
           </div>
           <div>
-            <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Covered Areas (Permissions)</label>
-            <div className="space-y-1.5 max-h-48 overflow-y-auto border border-zinc-100 rounded-xl p-3 bg-zinc-50/50">
+            <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Covered Areas & Criteria Permissions</label>
+            <div className="space-y-1.5 max-h-64 overflow-y-auto border border-zinc-100 rounded-xl p-3 bg-zinc-50/50">
               {areas.length === 0 ? (
                 <p className="text-xs text-zinc-400 italic">No areas available. Create areas first.</p>
               ) : (
                 areas.map(area => {
                   const isSelected = selectedAreas.includes(area.area);
+                  const criteria = getAreaCriteria(area.area);
+                  const selectedCriteria = allowedCriteriaMap[area.area] || [];
+                  const isAreaExpanded = expandedAreaCriteria === area.area;
                   return (
-                    <button
-                      key={area.id}
-                      onClick={() => toggleArea(area.area)}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left text-xs font-medium transition-all ${
-                        isSelected
-                          ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                          : 'bg-white text-zinc-600 border border-zinc-100 hover:border-zinc-200'
-                      }`}
-                    >
-                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${
-                        isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-zinc-300'
-                      }`}>
-                        {isSelected && <span className="text-[8px]">✓</span>}
+                    <div key={area.id}>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => toggleArea(area.area)}
+                          className={`flex-1 flex items-center gap-2.5 px-3 py-2 rounded-lg text-left text-xs font-medium transition-all ${
+                            isSelected
+                              ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                              : 'bg-white text-zinc-600 border border-zinc-100 hover:border-zinc-200'
+                          }`}
+                        >
+                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${
+                            isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-zinc-300'
+                          }`}>
+                            {isSelected && <span className="text-[8px]">✓</span>}
+                          </div>
+                          <MapPin className="w-3 h-3 shrink-0" />
+                          <span className="flex-1">{area.area}</span>
+                          {isSelected && selectedCriteria.length > 0 && (
+                            <span className="text-[9px] text-indigo-500 font-bold">{selectedCriteria.length} criteria</span>
+                          )}
+                          {isSelected && selectedCriteria.length === 0 && criteria.length > 0 && (
+                            <span className="text-[9px] text-zinc-400">All criteria</span>
+                          )}
+                        </button>
+                        {isSelected && criteria.length > 0 && (
+                          <button
+                            onClick={() => setExpandedAreaCriteria(isAreaExpanded ? null : area.area)}
+                            className="p-1.5 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                            title="Select specific criteria"
+                          >
+                            {isAreaExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                          </button>
+                        )}
                       </div>
-                      <MapPin className="w-3 h-3 shrink-0" />
-                      {area.area}
-                    </button>
+                      {isSelected && isAreaExpanded && criteria.length > 0 && (() => {
+                        // Deduplicate criteria by code (same code can appear for different programs)
+                        const uniqueCriteria = criteria.reduce((acc: AreaCriteria[], c) => {
+                          if (!acc.find(existing => existing.code === c.code)) acc.push(c);
+                          return acc;
+                        }, []);
+                        const uniqueCodes = uniqueCriteria.map(c => c.code);
+                        return (
+                        <div className="ml-6 mt-1 mb-2 p-2 rounded-lg bg-white border border-zinc-100 space-y-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Upload Permissions</p>
+                            <button
+                              onClick={() => toggleAllCriteria(area.area, uniqueCodes)}
+                              className="text-[9px] font-bold text-indigo-500 hover:text-indigo-700"
+                            >
+                              {uniqueCriteria.every(c => selectedCriteria.includes(c.code)) ? 'Deselect All' : 'Select All'}
+                            </button>
+                          </div>
+                          <p className="text-[9px] text-zinc-400 italic mb-1">Empty = can upload to all. Selected = can only upload to checked criteria.</p>
+                          {uniqueCriteria.map(c => {
+                            const isCriteriaSelected = selectedCriteria.includes(c.code);
+                            return (
+                              <button
+                                key={c.code}
+                                onClick={() => toggleCriteria(area.area, c.code)}
+                                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-[10px] font-medium transition-all ${
+                                  isCriteriaSelected
+                                    ? 'bg-indigo-50 text-indigo-700'
+                                    : 'text-zinc-500 hover:bg-zinc-50'
+                                }`}
+                              >
+                                <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
+                                  isCriteriaSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-zinc-300'
+                                }`}>
+                                  {isCriteriaSelected && <span className="text-[7px]">✓</span>}
+                                </div>
+                                <span className="font-bold">{c.code}</span>
+                                <span className="truncate">{c.desc}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        );
+                      })()}
+                    </div>
                   );
                 })
               )}
@@ -198,7 +308,7 @@ export default function RoleManagement() {
         api.getAcademicPrograms(token).catch(() => []),
       ]);
       setRoles(rolesData);
-      setAreas(areasData.map((a: any) => ({ id: a.id, documentId: a.documentId, area: a.area })));
+      setAreas(areasData.map((a: any) => ({ id: a.id, documentId: a.documentId, area: a.area, areaCriteria: a.areaCriteria || [] })));
       setPrograms(programsData);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch data');
@@ -365,13 +475,34 @@ export default function RoleManagement() {
                     {role.coveredAreas && role.coveredAreas.length > 0 && (
                       <div>
                         <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest pl-14 mb-1">Covered Areas</p>
-                        <div className="flex flex-wrap gap-1.5 pl-14">
-                          {role.coveredAreas.map((a, i) => (
-                            <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-zinc-50 text-zinc-600 border border-zinc-100">
-                              <MapPin className="w-3 h-3 text-zinc-400" />
-                              {a.area_with_permission}
-                            </span>
-                          ))}
+                        <div className="space-y-1.5 pl-14">
+                          {role.coveredAreas.map((a, i) => {
+                            const criteriaCodes = a.allowedCriteria ? a.allowedCriteria.split(',').map(c => c.trim()).filter(Boolean) : [];
+                            return (
+                              <div key={i}>
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-zinc-50 text-zinc-600 border border-zinc-100">
+                                  <MapPin className="w-3 h-3 text-zinc-400" />
+                                  {a.area_with_permission}
+                                  {criteriaCodes.length > 0 && (
+                                    <span className="text-indigo-500 ml-1">({criteriaCodes.length} criteria)</span>
+                                  )}
+                                  {criteriaCodes.length === 0 && (
+                                    <span className="text-zinc-400 ml-1">(all criteria)</span>
+                                  )}
+                                </span>
+                                {criteriaCodes.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-1 ml-4">
+                                    {criteriaCodes.map((code, j) => (
+                                      <span key={j} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100">
+                                        <FileText className="w-2.5 h-2.5" />
+                                        {code}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
