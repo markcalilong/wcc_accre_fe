@@ -18,7 +18,7 @@ interface UserData {
     documentId?: string;
     role: string;
     description?: string;
-    coveredAreas?: { id: number; area_with_permission: string }[];
+    coveredAreas?: { id: number; area_with_permission: string; allowedCriteria?: string }[];
     coveredPrograms?: { id: number; academic_program?: { id: number; programCode?: string; programDesc?: string } }[];
   };
 }

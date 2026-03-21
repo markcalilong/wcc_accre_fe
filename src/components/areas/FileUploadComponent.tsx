@@ -11,6 +11,7 @@ interface FileUploadComponentProps {
   onUpdateStatus: (uploadId: number, status: string, remarks: string) => void;
   isSubcriteria?: boolean;
   userRole?: string;
+  canUpload?: boolean;
 }
 
 function getFileUrl(upload: FileUploadMetadata): string | null {
@@ -106,7 +107,8 @@ export default function FileUploadComponent({
   onDelete,
   onUpdateStatus,
   isSubcriteria = false,
-  userRole = ''
+  userRole = '',
+  canUpload = true
 }: FileUploadComponentProps) {
   const roleKey = userRole.toLowerCase().replace(/\s+/g, '_');
   const hasReviewAccess = canReview(roleKey);
@@ -183,22 +185,28 @@ export default function FileUploadComponent({
         <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
           {isSubcriteria ? 'Sub-Criteria Uploads' : 'Criteria Uploads'}
         </h4>
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-white bg-[#4a86f7] hover:bg-blue-600 rounded-lg transition-all disabled:opacity-50"
-        >
-          {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
-          Upload PDF
-        </button>
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileChange}
-          accept=".pdf"
-          multiple
-          className="hidden"
-        />
+        {canUpload ? (
+          <>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-white bg-[#4a86f7] hover:bg-blue-600 rounded-lg transition-all disabled:opacity-50"
+            >
+              {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+              Upload PDF
+            </button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept=".pdf"
+              multiple
+              className="hidden"
+            />
+          </>
+        ) : (
+          <span className="text-[10px] text-zinc-400 italic">No upload permission</span>
+        )}
       </div>
 
       {error && (

@@ -77,6 +77,43 @@ export function getAvailableStatuses(role: string): string[] {
   return [];
 }
 
+// Check if a user can upload to a specific criteria within an area
+// Returns true if: no allowedCriteria set (empty = all), or criteriaCode is in the list
+export function canUploadToCriteria(user: any, areaName: string, criteriaCode: string): boolean {
+  const role = getUserPersonelRole(user);
+  const r = normalizeRole(role);
+
+  // Management roles can upload to everything
+  if (MANAGEMENT_ROLES.includes(r)) return true;
+
+  const coveredAreas = user?.personel_role?.coveredAreas || [];
+  const matchingArea = coveredAreas.find(
+    (a: any) => (a.area_with_permission || '').toLowerCase().trim() === areaName.toLowerCase().trim()
+  );
+
+  // If user doesn't have this area at all, they can't upload
+  if (!matchingArea) return false;
+
+  // If allowedCriteria is empty/null, user can upload to ALL criteria in this area
+  const allowed = matchingArea.allowedCriteria;
+  if (!allowed || allowed.trim() === '') return true;
+
+  // Check if the criteria code is in the allowed list
+  const allowedCodes = allowed.split(',').map((c: string) => c.trim().toLowerCase());
+  return allowedCodes.includes(criteriaCode.toLowerCase().trim());
+}
+
+// Get allowed criteria codes for a user in a specific area
+// Returns empty array if all criteria are allowed
+export function getAllowedCriteria(user: any, areaName: string): string[] {
+  const coveredAreas = user?.personel_role?.coveredAreas || [];
+  const matchingArea = coveredAreas.find(
+    (a: any) => (a.area_with_permission || '').toLowerCase().trim() === areaName.toLowerCase().trim()
+  );
+  if (!matchingArea || !matchingArea.allowedCriteria || matchingArea.allowedCriteria.trim() === '') return [];
+  return matchingArea.allowedCriteria.split(',').map((c: string) => c.trim()).filter(Boolean);
+}
+
 // Extract the personel_role name from user data
 // Falls back to Strapi built-in role if no personel_role assigned
 export function getUserPersonelRole(user: any): string {
