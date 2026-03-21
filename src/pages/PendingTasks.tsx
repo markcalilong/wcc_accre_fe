@@ -139,21 +139,33 @@ export default function PendingTasks() {
   const userCanApprove = useMemo(() => isApprover(personelRoleName), [personelRoleName]);
   const userCanReview = useMemo(() => isReviewer(personelRoleName), [personelRoleName]);
 
-  // Collect user's program codes
-  const userProgramCodes = useMemo(() => {
-    const codes: string[] = [];
-    const userOwnProgram = typeof userData?.academic_program === 'string'
-      ? userData.academic_program
-      : userData?.academic_program?.programCode;
-    if (userOwnProgram && userOwnProgram.trim()) {
-      codes.push(userOwnProgram.toLowerCase().trim());
+  // Build allowed criteria map per area from role's allowedCriteria
+  const allowedCriteriaByArea = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    const coveredAreas = userData?.personel_role?.coveredAreas || [];
+    for (const ca of coveredAreas) {
+      const areaName = (ca.area_with_permission || '').toLowerCase().trim();
+      const str = ca.allowedCriteria?.trim() || '';
+      map[areaName] = str ? str.split(',').map((c: string) => c.trim().toLowerCase()) : [];
     }
+    return map;
+  }, [userData]);
+
+  // Fallback program codes (used when allowedCriteria is empty for an area)
+  const fallbackProgramCodes = useMemo(() => {
+    const codes: string[] = [];
     const roleCoveredPrograms = userData?.personel_role?.coveredPrograms || [];
     for (const cp of roleCoveredPrograms) {
       const code = cp.academic_program?.programCode;
       if (code && !codes.includes(code.toLowerCase().trim())) {
         codes.push(code.toLowerCase().trim());
       }
+    }
+    const userOwnProgram = typeof userData?.academic_program === 'string'
+      ? userData.academic_program
+      : userData?.academic_program?.programCode;
+    if (userOwnProgram && userOwnProgram.trim() && !codes.includes(userOwnProgram.toLowerCase().trim())) {
+      codes.push(userOwnProgram.toLowerCase().trim());
     }
     return codes;
   }, [userData]);
@@ -174,13 +186,26 @@ export default function PendingTasks() {
         if (!userCoveredAreas.includes(area.area.toLowerCase().trim())) return;
       }
 
+      const areaNameLC = area.area.toLowerCase().trim();
+      const allowedEntries = allowedCriteriaByArea[areaNameLC];
+
       area.areaCriteria.forEach(criteria => {
-        // Filter by program
-        if (!isAdmin && userProgramCodes.length > 0 && criteria.academic_program?.programCode) {
-          if (!userProgramCodes.includes(criteria.academic_program.programCode.toLowerCase().trim())) return;
+        // Filter by allowedCriteria (if set) or fall back to program-based filter
+        if (!isAdmin) {
+          if (allowedEntries && allowedEntries.length > 0) {
+            const progCode = criteria.academic_program?.programCode?.toLowerCase().trim() || '';
+            const code = criteria.code.toLowerCase().trim();
+            const qualifiedKey = progCode ? `${progCode}:${code}` : code;
+            if (!allowedEntries.includes(qualifiedKey) && !((!progCode) && allowedEntries.includes(code))) return;
+          } else {
+            // No specific criteria → fall back to program-based filter
+            if (fallbackProgramCodes.length > 0 && criteria.academic_program?.programCode) {
+              if (!fallbackProgramCodes.includes(criteria.academic_program.programCode.toLowerCase().trim())) return;
+            }
+          }
         }
 
-        const canUpload = userData ? canUploadToCriteria(userData, area.area, criteria.code) : false;
+        const canUpload = userData ? canUploadToCriteria(userData, area.area, criteria.code, criteria.academic_program?.programCode) : false;
 
         // === UPLOAD TASKS (for uploaders) ===
         // Show criteria/subcriteria where user can upload but no files exist yet (or no approved files)
@@ -261,7 +286,7 @@ export default function PendingTasks() {
     });
 
     return items;
-  }, [areas, isAdmin, userCoveredAreas, userProgramCodes, userCanApprove, userCanReview, userData]);
+  }, [areas, isAdmin, userCoveredAreas, allowedCriteriaByArea, fallbackProgramCodes, userCanApprove, userCanReview, userData]);
 
   // Filter items by active tab
   const filteredItems = useMemo(() => {
