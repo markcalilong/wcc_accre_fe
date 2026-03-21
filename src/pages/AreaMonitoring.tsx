@@ -168,17 +168,23 @@ export default function AreaMonitoring() {
     ) || [];
   }, [userData]);
 
-  // Collect all program codes the user has access to:
-  // 1. User's own academic_program (plain string like "BSIT")
-  // 2. Role's coveredPrograms (for Deans managing multiple programs)
-  const userProgramCodes = useMemo(() => {
-    const codes: string[] = [];
-    const userOwnProgram = typeof userData?.academic_program === 'string'
-      ? userData.academic_program
-      : userData?.academic_program?.programCode;
-    if (userOwnProgram && userOwnProgram.trim()) {
-      codes.push(userOwnProgram.toLowerCase().trim());
+  // Build a map of allowed criteria per area from the role's allowedCriteria
+  // Format: { "Faculty": ["bsba:b.1", "bsba:b.2"], "Instruction": [] }
+  // Empty array = all criteria allowed for that area
+  const allowedCriteriaByArea = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    const coveredAreas = userData?.personel_role?.coveredAreas || [];
+    for (const ca of coveredAreas) {
+      const areaName = (ca.area_with_permission || '').toLowerCase().trim();
+      const str = ca.allowedCriteria?.trim() || '';
+      map[areaName] = str ? str.split(',').map((c: string) => c.trim().toLowerCase()) : [];
     }
+    return map;
+  }, [userData]);
+
+  // Fallback program codes (used when allowedCriteria is empty for an area)
+  const fallbackProgramCodes = useMemo(() => {
+    const codes: string[] = [];
     const roleCoveredPrograms = userData?.personel_role?.coveredPrograms || [];
     for (const cp of roleCoveredPrograms) {
       const code = cp.academic_program?.programCode;
@@ -186,10 +192,16 @@ export default function AreaMonitoring() {
         codes.push(code.toLowerCase().trim());
       }
     }
+    const userOwnProgram = typeof userData?.academic_program === 'string'
+      ? userData.academic_program
+      : userData?.academic_program?.programCode;
+    if (userOwnProgram && userOwnProgram.trim() && !codes.includes(userOwnProgram.toLowerCase().trim())) {
+      codes.push(userOwnProgram.toLowerCase().trim());
+    }
     return codes;
   }, [userData]);
 
-  // Filter areas and their criteria based on selections + user's role/coveredAreas/academicProgram
+  // Filter areas and their criteria based on selections + role's allowedCriteria
   const filteredAreas = useMemo(() => {
     return areas
       .filter(area => {
@@ -201,15 +213,27 @@ export default function AreaMonitoring() {
         return true;
       })
       .map(area => {
-        // Filter criteria within each area by academic program/year
+        const areaNameLC = area.area.toLowerCase().trim();
+        const allowedEntries = allowedCriteriaByArea[areaNameLC];
+
         const filteredCriteria = area.areaCriteria.filter(criteria => {
           // Dropdown filters at criteria level
           if (selectedProgram && String(criteria.academic_program?.id) !== selectedProgram) return false;
           if (selectedYear && String(criteria.academic_year?.id) !== selectedYear) return false;
 
-          // Non-admin: filter by user's program access
-          if (!isAdmin && userProgramCodes.length > 0 && criteria.academic_program?.programCode) {
-            if (!userProgramCodes.includes(criteria.academic_program.programCode.toLowerCase().trim())) return false;
+          if (!isAdmin) {
+            if (allowedEntries && allowedEntries.length > 0) {
+              // Role has specific criteria selected → only show those exact program:code matches
+              const progCode = criteria.academic_program?.programCode?.toLowerCase().trim() || '';
+              const code = criteria.code.toLowerCase().trim();
+              const qualifiedKey = progCode ? `${progCode}:${code}` : code;
+              if (!allowedEntries.includes(qualifiedKey) && !((!progCode) && allowedEntries.includes(code))) return false;
+            } else {
+              // No specific criteria → fall back to program-based filter
+              if (fallbackProgramCodes.length > 0 && criteria.academic_program?.programCode) {
+                if (!fallbackProgramCodes.includes(criteria.academic_program.programCode.toLowerCase().trim())) return false;
+              }
+            }
           }
 
           return true;
@@ -217,12 +241,11 @@ export default function AreaMonitoring() {
 
         return { ...area, areaCriteria: filteredCriteria };
       })
-      // Remove areas with no matching criteria (unless no filters applied)
       .filter(area => {
-        if (!selectedProgram && !selectedYear && (isAdmin || userProgramCodes.length === 0)) return true;
+        if (!selectedProgram && !selectedYear && isAdmin) return true;
         return area.areaCriteria.length > 0;
       });
-  }, [areas, selectedProgram, selectedYear, isAdmin, userCoveredAreas, userProgramCodes]);
+  }, [areas, selectedProgram, selectedYear, isAdmin, userCoveredAreas, allowedCriteriaByArea, fallbackProgramCodes]);
 
   // Count uploads from filtered areas only
   const counts = useMemo(() => {
