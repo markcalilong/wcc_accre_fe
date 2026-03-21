@@ -28,7 +28,18 @@
       "Bash(curl -s https://wcc-accre.onrender.com/api/users?populate=* -H 'Authorization: Bearer $JWT')",
       "Bash(python3 -c \"import sys,json; data=json.load\\(sys.stdin\\); print\\(json.dumps\\(data[0], indent=2\\)\\)\")",
       "Bash(npx vite:*)",
-      "Bash(node node_modules/vite/bin/vite.js build)"
+      "Bash(node node_modules/vite/bin/vite.js build)",
+      "Bash(grep -oE '\\(FACULTY|INSTRUCTION|LIBRARY|LABORATORIES|STUDENT SERVICES|PHYSICAL PLANT|PHILOSOPHY|SOCIAL ORIENTATION|ORGANIZATION\\)[^\\\\\\\\]*-\\(BSIT|BSED|BSBA|BSA|BSHM|BSAIS|Crim|HRM|ABPol|ABPolSci|CRIMINOLOGY\\)[^\\\\\\\\]*' ca71d891-78e6-4b35-b1e0-3ca2ad2c64d0.jsonl)",
+      "Bash(grep -oiE '\\(FACULTY|INSTRUCTION|LIBRARY|LABORATORIES|STUDENT.SERVICES|PHYSICAL.PLANT|PHILOSOPHY|SOCIAL.ORIENTATION|ORGANIZATION\\)[^a-z]{0,5}\\(BSIT|BSED|BSBA|BSA[^I]|BSHM|BSAIS|Crim|HRM|ABPol|CRIMINOLOGY\\)' ca71d891-78e6-4b35-b1e0-3ca2ad2c64d0.jsonl)",
+      "Bash(grep -oE 'FACULTY[^\\\\\\\\n]*|INSTRUCTION[^\\\\\\\\n]*|LIBRARY[^\\\\\\\\n]*|LABORATORIES[^\\\\\\\\n]*|STUDENT[^\\\\\\\\n]*|PHYSICAL[^\\\\\\\\n]*|PHILOSOPHY[^\\\\\\\\n]*|SOCIAL[^\\\\\\\\n]*|ORGANIZATION[^\\\\\\\\n]*')",
+      "Bash(for line:*)",
+      "Bash(do echo:*)",
+      "Bash(sed -n \"$linep\" ca71d891-78e6-4b35-b1e0-3ca2ad2c64d0.jsonl)",
+      "Bash(done)",
+      "Bash(grep -oE '\\(FACULTY|INSTRUCTION|LIBRARY|LABORATORIES|STUDENT SERVICES|PHYSICAL PLANT|PHILOSOPHY|SOCIAL ORIENTATION|ORGANIZATION\\)[^\"\"\"\"\\\\\\\\]*')",
+      "Bash(grep -oE '\\(FACULTY|INSTRUCTION|LIBRARY|LABORATORIES|STUDENT SERVICES|PHYSICAL PLANT|PHILOSOPHY|SOCIAL ORIENTATION|ORGANIZATION\\)[^\"\"\"\"\\\\\\\\n]{0,30}' ca71d891-78e6-4b35-b1e0-3ca2ad2c64d0.jsonl)",
+      "Bash(grep -oiE '\\(faculty|instruction|library|laboratories|student.services|physical.plant|philosophy|social.orientation|organization\\)[^\"\"\"\"\\\\\\\\a-z]{0,5}\\(BSIT|BSED|BSBA|BSA[^a-z]|BSHM|BSAIS|Crim|HRM|ABPol|CRIMINOLOGY|ABPolSci\\)' ca71d891-78e6-4b35-b1e0-3ca2ad2c64d0.jsonl)",
+      "Bash(node seed-areas.js)"
     ]
   }
 }
