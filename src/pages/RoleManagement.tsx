@@ -38,7 +38,8 @@ function RoleModal({ role, areas, programs, onClose, onSave }: {
   const [selectedAreas, setSelectedAreas] = useState<string[]>(
     role?.coveredAreas?.map(a => a.area_with_permission) || []
   );
-  // Track allowed criteria per area: { "Faculty": ["B.1", "B.2"], "Instruction": [] }
+  // Track allowed criteria per area: { "Faculty": ["BSIT:B.1", "BSBA:B.2"], "Instruction": [] }
+  // Format: "PROGRAM:CODE" for program-specific criteria, or "CODE" for criteria without a program
   const [allowedCriteriaMap, setAllowedCriteriaMap] = useState<Record<string, string[]>>(() => {
     const map: Record<string, string[]> = {};
     role?.coveredAreas?.forEach(a => {
@@ -66,21 +67,22 @@ function RoleModal({ role, areas, programs, onClose, onSave }: {
     });
   };
 
-  const toggleCriteria = (areaName: string, criteriaCode: string) => {
+  // criteriaKey is "PROGRAM:CODE" or just "CODE" for criteria without a program
+  const toggleCriteria = (areaName: string, criteriaKey: string) => {
     setAllowedCriteriaMap(prev => {
       const current = prev[areaName] || [];
-      const updated = current.includes(criteriaCode)
-        ? current.filter(c => c !== criteriaCode)
-        : [...current, criteriaCode];
+      const updated = current.includes(criteriaKey)
+        ? current.filter(c => c !== criteriaKey)
+        : [...current, criteriaKey];
       return { ...prev, [areaName]: updated };
     });
   };
 
-  const toggleAllCriteria = (areaName: string, allCodes: string[]) => {
+  const toggleAllCriteria = (areaName: string, allKeys: string[]) => {
     setAllowedCriteriaMap(prev => {
       const current = prev[areaName] || [];
-      const allSelected = allCodes.every(c => current.includes(c));
-      return { ...prev, [areaName]: allSelected ? [] : [...allCodes] };
+      const allSelected = allKeys.every(c => current.includes(c));
+      return { ...prev, [areaName]: allSelected ? [] : [...allKeys] };
     });
   };
 
@@ -186,44 +188,92 @@ function RoleModal({ role, areas, programs, onClose, onSave }: {
                         )}
                       </div>
                       {isSelected && isAreaExpanded && criteria.length > 0 && (() => {
-                        // Deduplicate criteria by code (same code can appear for different programs)
-                        const uniqueCriteria = criteria.reduce((acc: AreaCriteria[], c) => {
-                          if (!acc.find(existing => existing.code === c.code)) acc.push(c);
-                          return acc;
-                        }, []);
-                        const uniqueCodes = uniqueCriteria.map(c => c.code);
+                        // Group criteria by program (program-qualified keys: "BSIT:B.1")
+                        // Criteria without a program get key "CODE" (no prefix)
+                        const groupedByProgram: Record<string, { programCode: string; items: AreaCriteria[] }> = {};
+                        criteria.forEach(c => {
+                          const progCode = c.academic_program?.programCode || '';
+                          const groupKey = progCode || '__no_program__';
+                          if (!groupedByProgram[groupKey]) {
+                            groupedByProgram[groupKey] = { programCode: progCode, items: [] };
+                          }
+                          groupedByProgram[groupKey].items.push(c);
+                        });
+                        const allKeys = criteria.map(c => {
+                          const progCode = c.academic_program?.programCode;
+                          return progCode ? `${progCode}:${c.code}` : c.code;
+                        });
                         return (
-                        <div className="ml-6 mt-1 mb-2 p-2 rounded-lg bg-white border border-zinc-100 space-y-1">
+                        <div className="ml-6 mt-1 mb-2 p-2 rounded-lg bg-white border border-zinc-100 space-y-2">
                           <div className="flex items-center justify-between mb-1">
                             <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Upload Permissions</p>
                             <button
-                              onClick={() => toggleAllCriteria(area.area, uniqueCodes)}
+                              onClick={() => toggleAllCriteria(area.area, allKeys)}
                               className="text-[9px] font-bold text-indigo-500 hover:text-indigo-700"
                             >
-                              {uniqueCriteria.every(c => selectedCriteria.includes(c.code)) ? 'Deselect All' : 'Select All'}
+                              {allKeys.every(k => selectedCriteria.includes(k)) ? 'Deselect All' : 'Select All'}
                             </button>
                           </div>
                           <p className="text-[9px] text-zinc-400 italic mb-1">Empty = can upload to all. Selected = can only upload to checked criteria.</p>
-                          {uniqueCriteria.map(c => {
-                            const isCriteriaSelected = selectedCriteria.includes(c.code);
+                          {Object.entries(groupedByProgram).map(([groupKey, group]) => {
+                            const groupCriteriaKeys = group.items.map(c =>
+                              group.programCode ? `${group.programCode}:${c.code}` : c.code
+                            );
+                            const allGroupSelected = groupCriteriaKeys.every(k => selectedCriteria.includes(k));
                             return (
-                              <button
-                                key={c.code}
-                                onClick={() => toggleCriteria(area.area, c.code)}
-                                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-[10px] font-medium transition-all ${
-                                  isCriteriaSelected
-                                    ? 'bg-indigo-50 text-indigo-700'
-                                    : 'text-zinc-500 hover:bg-zinc-50'
-                                }`}
-                              >
-                                <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
-                                  isCriteriaSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-zinc-300'
-                                }`}>
-                                  {isCriteriaSelected && <span className="text-[7px]">✓</span>}
-                                </div>
-                                <span className="font-bold">{c.code}</span>
-                                <span className="truncate">{c.desc}</span>
-                              </button>
+                              <div key={groupKey} className="space-y-0.5">
+                                {group.programCode && (
+                                  <div className="flex items-center justify-between px-2 pt-1">
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-indigo-600 uppercase tracking-wider">
+                                      <GraduationCap className="w-3 h-3" />
+                                      {group.programCode}
+                                    </span>
+                                    <button
+                                      onClick={() => {
+                                        setAllowedCriteriaMap(prev => {
+                                          const current = prev[area.area] || [];
+                                          if (allGroupSelected) {
+                                            return { ...prev, [area.area]: current.filter(c => !groupCriteriaKeys.includes(c)) };
+                                          }
+                                          const toAdd = groupCriteriaKeys.filter(k => !current.includes(k));
+                                          return { ...prev, [area.area]: [...current, ...toAdd] };
+                                        });
+                                      }}
+                                      className="text-[8px] font-bold text-indigo-400 hover:text-indigo-700"
+                                    >
+                                      {allGroupSelected ? 'Deselect' : 'Select'} all {group.programCode}
+                                    </button>
+                                  </div>
+                                )}
+                                {!group.programCode && (
+                                  <div className="px-2 pt-1">
+                                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">General (No Program)</span>
+                                  </div>
+                                )}
+                                {group.items.map(c => {
+                                  const criteriaKey = group.programCode ? `${group.programCode}:${c.code}` : c.code;
+                                  const isCriteriaSelected = selectedCriteria.includes(criteriaKey);
+                                  return (
+                                    <button
+                                      key={criteriaKey}
+                                      onClick={() => toggleCriteria(area.area, criteriaKey)}
+                                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-[10px] font-medium transition-all ${
+                                        isCriteriaSelected
+                                          ? 'bg-indigo-50 text-indigo-700'
+                                          : 'text-zinc-500 hover:bg-zinc-50'
+                                      }`}
+                                    >
+                                      <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
+                                        isCriteriaSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-zinc-300'
+                                      }`}>
+                                        {isCriteriaSelected && <span className="text-[7px]">✓</span>}
+                                      </div>
+                                      <span className="font-bold">{c.code}</span>
+                                      <span className="truncate">{c.desc}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             );
                           })}
                         </div>

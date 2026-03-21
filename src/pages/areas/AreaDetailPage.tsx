@@ -375,7 +375,7 @@ export default function AreaDetailPage() {
                       onDeleteUpload={handleDeleteUpload}
                       onUpdateUploadStatus={handleUpdateUploadStatus}
                       userRole={userRole}
-                      canUpload={userData ? canUploadToCriteria(userData, area.area, criteria.code) : true}
+                      canUpload={userData ? canUploadToCriteria(userData, area.area, criteria.code, criteria.academic_program?.programCode) : true}
                     />
                   ))
                 )}

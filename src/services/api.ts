@@ -446,6 +446,7 @@ export const api = {
   /**
    * Sync allowedCriteria in all personel roles when criteria codes change
    * oldToNewMap: { "B.1": "B.1.1", "B.2": null } — null means deleted
+   * Handles both program-qualified ("BSIT:B.1") and legacy ("B.1") formats
    */
   syncAllowedCriteria: async (token: string, areaName: string, oldToNewMap: Record<string, string | null>) => {
     const roles = await api.getPersonelRoles(token);
@@ -456,18 +457,29 @@ export const api = {
         if (a.area_with_permission !== areaName) return a;
         if (!a.allowedCriteria || a.allowedCriteria.trim() === '') return a;
 
-        const codes = a.allowedCriteria.split(',').map((c: string) => c.trim()).filter(Boolean);
-        const newCodes = codes
-          .map((code: string) => {
-            if (code in oldToNewMap) {
-              needsUpdate = true;
-              return oldToNewMap[code]; // null = deleted, string = renamed
+        const entries = a.allowedCriteria.split(',').map((c: string) => c.trim()).filter(Boolean);
+        const newEntries = entries
+          .map((entry: string) => {
+            if (entry.includes(':')) {
+              // Program-qualified: "BSIT:B.1" — check if the code part changed
+              const [prog, code] = entry.split(':');
+              if (code in oldToNewMap) {
+                needsUpdate = true;
+                const newCode = oldToNewMap[code];
+                return newCode ? `${prog}:${newCode}` : null; // null = deleted
+              }
+              return entry;
             }
-            return code;
+            // Legacy plain code: "B.1"
+            if (entry in oldToNewMap) {
+              needsUpdate = true;
+              return oldToNewMap[entry]; // null = deleted, string = renamed
+            }
+            return entry;
           })
           .filter(Boolean) as string[];
 
-        return { ...a, allowedCriteria: newCodes.join(',') };
+        return { ...a, allowedCriteria: newEntries.join(',') };
       });
 
       if (needsUpdate) {
