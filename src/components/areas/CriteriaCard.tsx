@@ -9,6 +9,7 @@ interface CriteriaCardProps {
   onDeleteUpload: (criteriaId: number, subcriteriaId: number | null, uploadId: number) => void | Promise<void>;
   onUpdateUploadStatus: (criteriaId: number, subcriteriaId: number | null, uploadId: number, status: string, remarks: string) => void | Promise<void>;
   userRole?: string;
+  canUpload?: boolean;
 }
 
 const CriteriaCard: React.FC<CriteriaCardProps> = ({
@@ -16,7 +17,8 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
   onUploadSuccess,
   onDeleteUpload,
   onUpdateUploadStatus,
-  userRole = ''
+  userRole = '',
+  canUpload = true
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -78,6 +80,7 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
               onDelete={(uploadId) => onDeleteUpload(criteria.id, null, uploadId)}
               onUpdateStatus={(uploadId, status, remarks) => onUpdateUploadStatus(criteria.id, null, uploadId, status, remarks)}
               userRole={userRole}
+              canUpload={canUpload}
             />
           </div>
 
@@ -105,6 +108,7 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
                         onUpdateStatus={(uploadId, status, remarks) => onUpdateUploadStatus(criteria.id, sub.id, uploadId, status, remarks)}
                         isSubcriteria
                         userRole={userRole}
+                        canUpload={canUpload}
                       />
                     </div>
                   </div>

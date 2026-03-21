@@ -4,7 +4,7 @@ import { ArrowLeft, Loader2, AlertCircle, RefreshCw, Layers, Calendar, Graduatio
 import { api } from '../../services/api';
 import { Area, AreaCriteria, FileUploadMetadata } from '../../types/area';
 import CriteriaCard from '../../components/areas/CriteriaCard';
-import { getUserPersonelRole } from '../../utils/roles';
+import { getUserPersonelRole, canUploadToCriteria, hasManagementAccess } from '../../utils/roles';
 
 export default function AreaDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -13,6 +13,7 @@ export default function AreaDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>('');
+  const [userData, setUserData] = useState<any>(null);
 
   const fetchArea = useCallback(async () => {
     if (!id) return;
@@ -38,6 +39,7 @@ export default function AreaDetailPage() {
     if (token) {
       api.getMe(token).then(user => {
         setUserRole(getUserPersonelRole(user));
+        setUserData(user);
       }).catch(() => {});
     }
   }, [fetchArea]);
@@ -314,34 +316,73 @@ export default function AreaDetailPage() {
       </div>
 
       <div className="space-y-6">
-        <div className="flex items-center justify-between px-2">
-          <h2 className="text-xl font-bold text-zinc-900 flex items-center gap-2">
-            <FileText className="w-5 h-5 text-indigo-600" />
-            Area Criteria
-          </h2>
-          <span className="px-3 py-1 rounded-full bg-zinc-100 text-zinc-500 text-xs font-bold uppercase tracking-widest">
-            {area.areaCriteria.length} Criteria
-          </span>
-        </div>
+        {(() => {
+          // Filter criteria by user's program access
+          const isAdmin = hasManagementAccess(userRole);
 
-        <div className="grid grid-cols-1 gap-6">
-          {area.areaCriteria.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-3xl border border-zinc-100 border-dashed">
-              <p className="text-zinc-400 italic">No criteria defined for this area.</p>
-            </div>
-          ) : (
-            area.areaCriteria.map((criteria) => (
-              <CriteriaCard
-                key={criteria.id}
-                criteria={criteria}
-                onUploadSuccess={handleUploadSuccess}
-                onDeleteUpload={handleDeleteUpload}
-                onUpdateUploadStatus={handleUpdateUploadStatus}
-                userRole={userRole}
-              />
-            ))
-          )}
-        </div>
+          // Collect all program codes the user has access to:
+          // 1. From user's own academic_program field (plain string like "BSIT")
+          // 2. From role's coveredPrograms (for Deans managing multiple programs)
+          const userProgramCodes: string[] = [];
+
+          // academic_program on user can be a string or a relation object
+          const userOwnProgram = typeof userData?.academic_program === 'string'
+            ? userData.academic_program
+            : userData?.academic_program?.programCode;
+          if (userOwnProgram && userOwnProgram.trim()) {
+            userProgramCodes.push(userOwnProgram.toLowerCase().trim());
+          }
+
+          const roleCoveredPrograms = userData?.personel_role?.coveredPrograms || [];
+          for (const cp of roleCoveredPrograms) {
+            const code = cp.academic_program?.programCode;
+            if (code && !userProgramCodes.includes(code.toLowerCase().trim())) {
+              userProgramCodes.push(code.toLowerCase().trim());
+            }
+          }
+
+          const filteredCriteria = isAdmin || userProgramCodes.length === 0
+            ? area.areaCriteria
+            : area.areaCriteria.filter(c => {
+                // If criteria has no program assigned, show it to everyone
+                if (!c.academic_program?.programCode) return true;
+                return userProgramCodes.includes(c.academic_program.programCode.toLowerCase().trim());
+              });
+
+          return (
+            <>
+              <div className="flex items-center justify-between px-2">
+                <h2 className="text-xl font-bold text-zinc-900 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-indigo-600" />
+                  Area Criteria
+                </h2>
+                <span className="px-3 py-1 rounded-full bg-zinc-100 text-zinc-500 text-xs font-bold uppercase tracking-widest">
+                  {filteredCriteria.length} Criteria
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6">
+                {filteredCriteria.length === 0 ? (
+                  <div className="text-center py-20 bg-white rounded-3xl border border-zinc-100 border-dashed">
+                    <p className="text-zinc-400 italic">No criteria available for your program.</p>
+                  </div>
+                ) : (
+                  filteredCriteria.map((criteria) => (
+                    <CriteriaCard
+                      key={criteria.id}
+                      criteria={criteria}
+                      onUploadSuccess={handleUploadSuccess}
+                      onDeleteUpload={handleDeleteUpload}
+                      onUpdateUploadStatus={handleUpdateUploadStatus}
+                      userRole={userRole}
+                      canUpload={userData ? canUploadToCriteria(userData, area.area, criteria.code) : true}
+                    />
+                  ))
+                )}
+              </div>
+            </>
+          );
+        })()}
       </div>
     </div>
   );
