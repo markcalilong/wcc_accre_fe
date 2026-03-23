@@ -16,12 +16,16 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
   const [error, setError] = useState<string | null>(null);
   const [programs, setPrograms] = useState<any[]>([]);
   const [years, setYears] = useState<any[]>([]);
+  const [campuses, setCampuses] = useState<any[]>([]);
+  const [visitTypes, setVisitTypes] = useState<any[]>([]);
 
   const [formData, setFormData] = useState({
     area: '',
     areaDesc: '',
     proposedExhibits: '',
     remarks: '',
+    campus: '' as string,
+    visit: '' as string,
     areaCriteria: [] as any[]
   });
 
@@ -34,6 +38,8 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
           areaDesc: area.areaDesc || '',
           proposedExhibits: area.proposedExhibits || '',
           remarks: area.remarks || '',
+          campus: (area as any).campus?.id?.toString() || '',
+          visit: (area as any).visit?.id?.toString() || '',
           areaCriteria: area.areaCriteria?.map(c => ({
             ...c,
             academic_program: c.academic_program?.id?.toString() || '',
@@ -46,6 +52,8 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
           areaDesc: '',
           proposedExhibits: '',
           remarks: '',
+          campus: '',
+          visit: '',
           areaCriteria: []
         });
       }
@@ -57,12 +65,16 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
     if (!token) return;
 
     try {
-      const [programsData, yearsData] = await Promise.all([
+      const [programsData, yearsData, campusesData, visitTypesData] = await Promise.all([
         api.getAcademicPrograms(token),
-        api.getAcademicYears(token)
+        api.getAcademicYears(token),
+        api.getCampuses(token).catch(() => []),
+        api.getVisitTypes(token).catch(() => [])
       ]);
       setPrograms(programsData);
       setYears(yearsData);
+      setCampuses(campusesData);
+      setVisitTypes(visitTypesData);
     } catch (err: any) {
       console.error('Failed to fetch options:', err);
     }
@@ -82,7 +94,8 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
         const fileData = Array.isArray(u.fileUpload) ? u.fileUpload[0] : u.fileUpload;
         const uploaderData = Array.isArray(u.uploader) ? u.uploader[0] : u.uploader;
         const approverData = Array.isArray(u.approver) ? u.approver[0] : u.approver;
-        
+        const semesterData = u.semester;
+
         const { documentId: _uDocId, id: uId, ...restU } = u;
         return {
           ...restU,
@@ -90,11 +103,14 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
           fileUpload: fileData?.id || fileData?.data?.id || (Array.isArray(fileData?.data) ? fileData?.data[0]?.id : undefined) || fileData,
           uploader: uploaderData?.id || uploaderData?.data?.id || (Array.isArray(uploaderData?.data) ? uploaderData?.data[0]?.id : undefined) || uploaderData,
           approver: approverData?.id || approverData?.data?.id || (Array.isArray(approverData?.data) ? approverData?.data[0]?.id : undefined) || approverData,
+          semester: semesterData?.id || semesterData || null,
         };
       });
 
       const payload = {
         ...formData,
+        campus: formData.campus ? Number(formData.campus) : null,
+        visit: formData.visit ? Number(formData.visit) : null,
         areaCriteria: formData.areaCriteria.map(c => {
           const { documentId: _cDocId, id: cId, ...restC } = c;
           return {
@@ -338,6 +354,35 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
                   className="w-full px-5 py-4 bg-zinc-50 border border-zinc-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none"
                   placeholder="Describe the purpose of this area..."
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest px-1">Campus</label>
+                  <select
+                    value={formData.campus}
+                    onChange={(e) => setFormData({ ...formData, campus: e.target.value })}
+                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm appearance-none"
+                  >
+                    <option value="">No Campus</option>
+                    {campuses.map((c: any) => (
+                      <option key={c.id} value={c.id}>{c.campusDesc}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest px-1">Visit Type</label>
+                  <select
+                    value={formData.visit}
+                    onChange={(e) => setFormData({ ...formData, visit: e.target.value })}
+                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm appearance-none"
+                  >
+                    <option value="">No Visit Type</option>
+                    {visitTypes.map((v: any) => (
+                      <option key={v.id} value={v.id}>{v.visitType}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
             </div>

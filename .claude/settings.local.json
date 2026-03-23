@@ -43,7 +43,11 @@
       "WebFetch(domain:wcc-accre.onrender.com)",
       "Bash(curl -s -X POST https://wcc-accre.onrender.com/api/auth/local -H \"Content-Type: application/json\" -d '{\"\"\"\"identifier\"\"\"\":\"\"\"\"wccfaculty\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"Faculty123\"\"\"\"}')",
       "Bash(curl -s -X POST https://wcc-accre.onrender.com/admin/login -H \"Content-Type: application/json\" -d '{\"\"\"\"email\"\"\"\":\"\"\"\"admin@gmail.com\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"Admin123\"\"\"\"}')",
-      "Bash(python3 -c \":*)"
+      "Bash(python3 -c \":*)",
+      "Bash(find src/components -type f -name *Academic* -o -name *Year* -o -name *Program*)",
+      "Bash(curl -s -X POST https://wcc-accre.onrender.com/admin/login -H \"Content-Type: application/json\" -d \"{\"\"email\"\":\"\"admin@gmail.com\"\",\"\"password\"\":\"\"Admin123\"\"}\")",
+      "Bash(python3 -c \"import json; d=json.load\\(open\\(''C:/Users/User/Downloads/admin_token.json''\\)\\); t=d.get\\(''data''\\) or {}; print\\(''OK'' if t.get\\(''token''\\) else d\\)\")",
+      "Bash(python3 -c \"import json; d=json.load\\(open\\(''C:/Users/User/Downloads/admin_token.json''\\)\\); print\\(''OK'' if d.get\\(''data'',{}\\).get\\(''token''\\) else d\\)\")"
     ]
   }
 }

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
-import { Loader2, LogOut, LayoutDashboard, FileText, Users, GraduationCap, BarChart3, Layers, ChevronDown, ChevronRight, FolderOpen, Shield, ClipboardCheck } from 'lucide-react';
+import { Loader2, LogOut, LayoutDashboard, FileText, Users, GraduationCap, BarChart3, Layers, ChevronDown, ChevronRight, FolderOpen, Shield, ClipboardCheck, Building2, Calendar, BookOpen, ClipboardList } from 'lucide-react';
 import { hasManagementAccess, getUserPersonelRole } from '../utils/roles';
 
 interface UserData {
@@ -34,6 +34,10 @@ const MANAGEMENT_ITEMS = [
   { id: 'area-monitoring', label: 'Area Monitoring', icon: BarChart3, path: '/dashboard/area-monitoring' },
   { id: 'academic-years', label: 'Academic Year Management', icon: FileText, path: '/dashboard/academic-years' },
   { id: 'academic-programs', label: 'Academic Program Management', icon: GraduationCap, path: '/dashboard/academic-programs' },
+  { id: 'campuses', label: 'Campus Management', icon: Building2, path: '/dashboard/campuses' },
+  { id: 'semesters', label: 'Semester Management', icon: Calendar, path: '/dashboard/semesters' },
+  { id: 'program-types', label: 'Program Type Management', icon: BookOpen, path: '/dashboard/program-types' },
+  { id: 'visit-types', label: 'Visit Type Management', icon: ClipboardList, path: '/dashboard/visit-types' },
   { id: 'consolidate', label: 'Consolidate Files', icon: Layers, path: '/dashboard/consolidate' },
   { id: 'users', label: 'User Management', icon: Users, path: '/dashboard/users' },
   { id: 'roles', label: 'Role Management', icon: Shield, path: '/dashboard/roles' },

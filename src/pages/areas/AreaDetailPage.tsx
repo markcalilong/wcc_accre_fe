@@ -55,6 +55,7 @@ export default function AreaDetailPage() {
         const fileData = Array.isArray(u.fileUpload) ? u.fileUpload[0] : u.fileUpload;
         const uploaderData = Array.isArray(u.uploader) ? u.uploader[0] : u.uploader;
         const approverData = Array.isArray(u.approver) ? u.approver[0] : u.approver;
+        const semesterData = u.semester;
         return {
           ...(typeof u.id === 'number' ? { id: u.id } : {}),
           fileName: u.fileName,
@@ -63,6 +64,7 @@ export default function AreaDetailPage() {
           fileUpload: fileData?.id || fileData?.data?.id || (Array.isArray(fileData?.data) ? fileData?.data[0]?.id : undefined) || fileData,
           uploader: uploaderData?.id || uploaderData?.data?.id || (Array.isArray(uploaderData?.data) ? uploaderData?.data[0]?.id : undefined) || uploaderData,
           approver: approverData?.id || approverData?.data?.id || (Array.isArray(approverData?.data) ? approverData?.data[0]?.id : undefined) || approverData,
+          semester: semesterData?.id || semesterData || null,
         };
       }) || [],
       subcriteria: c.subcriteria?.map((s: any) => ({
@@ -73,6 +75,7 @@ export default function AreaDetailPage() {
           const fileData = Array.isArray(u.fileUpload) ? u.fileUpload[0] : u.fileUpload;
           const uploaderData = Array.isArray(u.uploader) ? u.uploader[0] : u.uploader;
           const approverData = Array.isArray(u.approver) ? u.approver[0] : u.approver;
+          const semesterData = u.semester;
           return {
             ...(typeof u.id === 'number' ? { id: u.id } : {}),
             fileName: u.fileName,
@@ -81,6 +84,7 @@ export default function AreaDetailPage() {
             fileUpload: fileData?.id || fileData?.data?.id || (Array.isArray(fileData?.data) ? fileData?.data[0]?.id : undefined) || fileData,
             uploader: uploaderData?.id || uploaderData?.data?.id || (Array.isArray(uploaderData?.data) ? uploaderData?.data[0]?.id : undefined) || uploaderData,
             approver: approverData?.id || approverData?.data?.id || (Array.isArray(approverData?.data) ? approverData?.data[0]?.id : undefined) || approverData,
+            semester: semesterData?.id || semesterData || null,
           };
         }) || []
       })) || []
@@ -289,7 +293,22 @@ export default function AreaDetailPage() {
               <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">{area.area}</h1>
             </div>
             <p className="text-zinc-500 text-lg leading-relaxed">{area.areaDesc}</p>
-            
+
+            {((area as any).campus || (area as any).visit) && (
+              <div className="flex flex-wrap gap-2">
+                {(area as any).campus?.campusDesc && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-teal-50 text-teal-600 border border-teal-100">
+                    Campus: {(area as any).campus.campusDesc}
+                  </span>
+                )}
+                {(area as any).visit?.visitType && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-600 border border-purple-100">
+                    Visit: {(area as any).visit.visitType}
+                  </span>
+                )}
+              </div>
+            )}
+
             {(area.proposedExhibits || area.remarks) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-50">
                 {area.proposedExhibits && (

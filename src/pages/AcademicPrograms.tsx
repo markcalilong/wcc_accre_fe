@@ -14,16 +14,18 @@ interface AcademicProgram {
   };
   programCode?: string;
   programDesc?: string;
+  program_type?: { id: number; documentId?: string; programTypeDesc?: string } | null;
 }
 
 export default function AcademicPrograms() {
   const [data, setData] = useState<AcademicProgram[]>([]);
+  const [programTypes, setProgramTypes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProgram, setEditingProgram] = useState<AcademicProgram | null>(null);
   const [mutationLoading, setMutationLoading] = useState(false);
-  
+
   const navigate = useNavigate();
 
   const fetchData = useCallback(async () => {
@@ -35,8 +37,12 @@ export default function AcademicPrograms() {
 
     try {
       setLoading(true);
-      const programs = await api.getAcademicPrograms(token);
+      const [programs, types] = await Promise.all([
+        api.getAcademicPrograms(token),
+        api.getProgramTypes(token).catch(() => [])
+      ]);
       setData(programs);
+      setProgramTypes(types);
       setError('');
     } catch (err: any) {
       setError(err.message || 'Failed to fetch academic programs');
@@ -49,7 +55,7 @@ export default function AcademicPrograms() {
     fetchData();
   }, [fetchData]);
 
-  const handleCreateOrUpdate = async (formData: { programCode: string; programDesc: string }) => {
+  const handleCreateOrUpdate = async (formData: { programCode: string; programDesc: string; program_type?: number | null }) => {
     const token = localStorage.getItem('jwt');
     if (!token) return;
 
@@ -142,6 +148,7 @@ export default function AcademicPrograms() {
       {isFormOpen && (
         <AcademicProgramForm
           initialData={editingProgram}
+          programTypes={programTypes}
           loading={mutationLoading}
           onClose={closeForm}
           onSubmit={handleCreateOrUpdate}

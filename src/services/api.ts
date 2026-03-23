@@ -77,6 +77,7 @@ export const api = {
     const query = qs.stringify({
       populate: {
         role: true,
+        campuses: true,
         personel_role: {
           populate: {
             coveredAreas: true,
@@ -178,10 +179,11 @@ export const api = {
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
-    
+
     const query = qs.stringify({
       sort: ['createdAt:desc'],
-      pagination: { pageSize: 100 }
+      pagination: { pageSize: 100 },
+      populate: { program_type: true }
     }, { encodeValuesOnly: true });
     const response = await fetch(`${BASE_URL}/api/academic-programs?${query}`, {
       method: 'GET',
@@ -247,6 +249,8 @@ export const api = {
       sort: ['createdAt:desc'],
       pagination: { pageSize: 100 },
       populate: {
+        campus: true,
+        visit: true,
         areaCriteria: {
           populate: {
             academic_program: true,
@@ -255,7 +259,8 @@ export const api = {
               populate: {
                 fileUpload: true,
                 uploader: true,
-                approver: true
+                approver: true,
+                semester: true
               }
             },
             subcriteria: {
@@ -264,7 +269,8 @@ export const api = {
                   populate: {
                     fileUpload: true,
                     uploader: true,
-                    approver: true
+                    approver: true,
+                    semester: true
                   }
                 }
               }
@@ -289,6 +295,8 @@ export const api = {
     // Using deep population for nested criteria and uploads
     const query = qs.stringify({
       populate: {
+        campus: true,
+        visit: true,
         areaCriteria: {
           populate: {
             academic_program: true,
@@ -297,7 +305,8 @@ export const api = {
               populate: {
                 fileUpload: true,
                 uploader: true,
-                approver: true
+                approver: true,
+                semester: true
               }
             },
             subcriteria: {
@@ -306,7 +315,8 @@ export const api = {
                   populate: {
                     fileUpload: true,
                     uploader: true,
-                    approver: true
+                    approver: true,
+                    semester: true
                   }
                 }
               }
@@ -430,7 +440,7 @@ export const api = {
    */
   getUsers: async (token: string) => {
     const query = qs.stringify({
-      populate: ['role', 'personel_role'],
+      populate: ['role', 'personel_role', 'campuses'],
       pagination: { pageSize: 200 }
     }, { encodeValuesOnly: true });
     const response = await fetch(`${BASE_URL}/api/users?${query}`, {
@@ -491,6 +501,158 @@ export const api = {
         });
       }
     }
+  },
+
+  /**
+   * Campuses CRUD
+   */
+  getCampuses: async (token: string) => {
+    const query = qs.stringify({ sort: ['createdAt:desc'], pagination: { pageSize: 100 } }, { encodeValuesOnly: true });
+    const response = await fetch(`${BASE_URL}/api/campuses?${query}`, {
+      method: 'GET', headers: { 'Authorization': `Bearer ${token}` }, cache: 'no-store'
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error?.message || 'Failed to fetch campuses');
+    return result.data;
+  },
+  createCampus: async (token: string, data: any) => {
+    const response = await fetch(`${BASE_URL}/api/campuses`, {
+      method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error?.message || 'Failed to create campus');
+    return result.data;
+  },
+  updateCampus: async (token: string, id: string | number, data: any) => {
+    const response = await fetch(`${BASE_URL}/api/campuses/${id}`, {
+      method: 'PUT', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error?.message || 'Failed to update campus');
+    return result.data;
+  },
+  deleteCampus: async (token: string, id: string | number) => {
+    const response = await fetch(`${BASE_URL}/api/campuses/${id}`, {
+      method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!response.ok) { const result = await response.json(); throw new Error(result.error?.message || 'Failed to delete campus'); }
+    return true;
+  },
+
+  /**
+   * Semesters CRUD
+   */
+  getSemesters: async (token: string) => {
+    const query = qs.stringify({ sort: ['createdAt:desc'], pagination: { pageSize: 100 } }, { encodeValuesOnly: true });
+    const response = await fetch(`${BASE_URL}/api/semesters?${query}`, {
+      method: 'GET', headers: { 'Authorization': `Bearer ${token}` }, cache: 'no-store'
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error?.message || 'Failed to fetch semesters');
+    return result.data;
+  },
+  createSemester: async (token: string, data: any) => {
+    const response = await fetch(`${BASE_URL}/api/semesters`, {
+      method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error?.message || 'Failed to create semester');
+    return result.data;
+  },
+  updateSemester: async (token: string, id: string | number, data: any) => {
+    const response = await fetch(`${BASE_URL}/api/semesters/${id}`, {
+      method: 'PUT', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error?.message || 'Failed to update semester');
+    return result.data;
+  },
+  deleteSemester: async (token: string, id: string | number) => {
+    const response = await fetch(`${BASE_URL}/api/semesters/${id}`, {
+      method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!response.ok) { const result = await response.json(); throw new Error(result.error?.message || 'Failed to delete semester'); }
+    return true;
+  },
+
+  /**
+   * Program Types CRUD
+   */
+  getProgramTypes: async (token: string) => {
+    const query = qs.stringify({ sort: ['createdAt:desc'], pagination: { pageSize: 100 } }, { encodeValuesOnly: true });
+    const response = await fetch(`${BASE_URL}/api/programs?${query}`, {
+      method: 'GET', headers: { 'Authorization': `Bearer ${token}` }, cache: 'no-store'
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error?.message || 'Failed to fetch program types');
+    return result.data;
+  },
+  createProgramType: async (token: string, data: any) => {
+    const response = await fetch(`${BASE_URL}/api/programs`, {
+      method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error?.message || 'Failed to create program type');
+    return result.data;
+  },
+  updateProgramType: async (token: string, id: string | number, data: any) => {
+    const response = await fetch(`${BASE_URL}/api/programs/${id}`, {
+      method: 'PUT', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error?.message || 'Failed to update program type');
+    return result.data;
+  },
+  deleteProgramType: async (token: string, id: string | number) => {
+    const response = await fetch(`${BASE_URL}/api/programs/${id}`, {
+      method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!response.ok) { const result = await response.json(); throw new Error(result.error?.message || 'Failed to delete program type'); }
+    return true;
+  },
+
+  /**
+   * Visit Types CRUD
+   */
+  getVisitTypes: async (token: string) => {
+    const query = qs.stringify({ sort: ['createdAt:desc'], pagination: { pageSize: 100 } }, { encodeValuesOnly: true });
+    const response = await fetch(`${BASE_URL}/api/visit-types?${query}`, {
+      method: 'GET', headers: { 'Authorization': `Bearer ${token}` }, cache: 'no-store'
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error?.message || 'Failed to fetch visit types');
+    return result.data;
+  },
+  createVisitType: async (token: string, data: any) => {
+    const response = await fetch(`${BASE_URL}/api/visit-types`, {
+      method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error?.message || 'Failed to create visit type');
+    return result.data;
+  },
+  updateVisitType: async (token: string, id: string | number, data: any) => {
+    const response = await fetch(`${BASE_URL}/api/visit-types/${id}`, {
+      method: 'PUT', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error?.message || 'Failed to update visit type');
+    return result.data;
+  },
+  deleteVisitType: async (token: string, id: string | number) => {
+    const response = await fetch(`${BASE_URL}/api/visit-types/${id}`, {
+      method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!response.ok) { const result = await response.json(); throw new Error(result.error?.message || 'Failed to delete visit type'); }
+    return true;
   },
 
   /**

@@ -9,6 +9,12 @@ interface PersonelRole {
   description: string;
 }
 
+interface CampusRecord {
+  id: number;
+  documentId?: string;
+  campusDesc?: string;
+}
+
 interface UserRecord {
   id: number;
   documentId: string;
@@ -20,6 +26,7 @@ interface UserRecord {
   birthDate: string | null;
   mobileNumber: string | null;
   academic_program: string | null;
+  campuses?: CampusRecord[];
   confirmed: boolean;
   blocked: boolean;
   createdAt: string;
@@ -69,10 +76,11 @@ function RoleBadge({ personelRole, strapiRole }: { personelRole?: PersonelRole; 
   );
 }
 
-function EditUserModal({ user, programs, personelRoles, onClose, onSave }: {
+function EditUserModal({ user, programs, personelRoles, allCampuses, onClose, onSave }: {
   user: UserRecord;
   programs: any[];
   personelRoles: PersonelRole[];
+  allCampuses: CampusRecord[];
   onClose: () => void;
   onSave: (userId: number, data: Record<string, any>) => Promise<void>;
 }) {
@@ -84,6 +92,9 @@ function EditUserModal({ user, programs, personelRoles, onClose, onSave }: {
   const [academicProgram, setAcademicProgram] = useState(user.academic_program || '');
   const [selectedRoleId, setSelectedRoleId] = useState<string>(
     user.personel_role ? String(user.personel_role.id) : ''
+  );
+  const [selectedCampusIds, setSelectedCampusIds] = useState<number[]>(
+    user.campuses?.map(c => c.id) || []
   );
   const [saving, setSaving] = useState(false);
 
@@ -98,6 +109,7 @@ function EditUserModal({ user, programs, personelRoles, onClose, onSave }: {
         mobileNumber: mobileNumber.trim() || null,
         academic_program: academicProgram || null,
         personel_role: selectedRoleId ? Number(selectedRoleId) : null,
+        campuses: selectedCampusIds,
       });
       onClose();
     } catch (err: any) {
@@ -175,6 +187,35 @@ function EditUserModal({ user, programs, personelRoles, onClose, onSave }: {
               ))}
             </select>
           </div>
+          <div>
+            <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Campuses</label>
+            <div className="flex flex-wrap gap-2 p-3 rounded-xl border border-zinc-200 bg-zinc-50 min-h-[42px]">
+              {allCampuses.map(campus => {
+                const isSelected = selectedCampusIds.includes(campus.id);
+                return (
+                  <button
+                    key={campus.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCampusIds(prev =>
+                        isSelected ? prev.filter(id => id !== campus.id) : [...prev, campus.id]
+                      );
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      isSelected
+                        ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                        : 'bg-white text-zinc-400 border border-zinc-200 hover:border-indigo-200 hover:text-indigo-600'
+                    }`}
+                  >
+                    {campus.campusDesc}
+                  </button>
+                );
+              })}
+              {allCampuses.length === 0 && (
+                <span className="text-xs text-zinc-400 italic">No campuses available</span>
+              )}
+            </div>
+          </div>
         </div>
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-zinc-100 bg-zinc-50">
           <button onClick={onClose} className="px-4 py-2 text-sm font-bold text-zinc-600 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-all">
@@ -198,6 +239,7 @@ export default function UserManagement() {
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [programs, setPrograms] = useState<any[]>([]);
   const [personelRoles, setPersonelRoles] = useState<PersonelRole[]>([]);
+  const [allCampuses, setAllCampuses] = useState<CampusRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -212,14 +254,16 @@ export default function UserManagement() {
     setLoading(true);
     setError(null);
     try {
-      const [usersRes, programsRes, rolesRes] = await Promise.all([
+      const [usersRes, programsRes, rolesRes, campusesRes] = await Promise.all([
         api.getUsers(token),
         api.getAcademicPrograms().catch(() => []),
         api.getPersonelRoles(token).catch(() => []),
+        api.getCampuses(token).catch(() => []),
       ]);
       setUsers(Array.isArray(usersRes) ? usersRes : []);
       setPrograms(programsRes);
       setPersonelRoles(rolesRes);
+      setAllCampuses(campusesRes);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch users');
     } finally {
@@ -301,7 +345,7 @@ export default function UserManagement() {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {editingUser && (
-        <EditUserModal user={editingUser} programs={programs} personelRoles={personelRoles} onClose={() => setEditingUser(null)} onSave={handleSaveUser} />
+        <EditUserModal user={editingUser} programs={programs} personelRoles={personelRoles} allCampuses={allCampuses} onClose={() => setEditingUser(null)} onSave={handleSaveUser} />
       )}
 
       {/* Header */}
@@ -380,6 +424,7 @@ export default function UserManagement() {
                 <th className="text-left px-4 py-3 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">User</th>
                 <th className="text-left px-4 py-3 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Email</th>
                 <th className="text-left px-4 py-3 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Program</th>
+                <th className="text-left px-4 py-3 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Campus</th>
                 <th className="text-left px-4 py-3 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Role</th>
                 <th className="text-left px-4 py-3 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Status</th>
                 <th className="text-left px-4 py-3 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Registered</th>
@@ -389,7 +434,7 @@ export default function UserManagement() {
             <tbody className="divide-y divide-zinc-50">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-zinc-400 italic">
+                  <td colSpan={8} className="px-4 py-12 text-center text-zinc-400 italic">
                     No users found matching your filters.
                   </td>
                 </tr>
@@ -415,6 +460,19 @@ export default function UserManagement() {
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-zinc-600">
                           <GraduationCap className="w-3 h-3" /> {user.academic_program}
                         </span>
+                      ) : (
+                        <span className="text-xs text-zinc-300 italic">None</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {user.campuses && user.campuses.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {user.campuses.map(c => (
+                            <span key={c.id} className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-600 border border-teal-100 uppercase tracking-wider">
+                              {c.campusDesc}
+                            </span>
+                          ))}
+                        </div>
                       ) : (
                         <span className="text-xs text-zinc-300 italic">None</span>
                       )}

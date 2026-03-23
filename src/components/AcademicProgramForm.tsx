@@ -10,18 +10,27 @@ interface AcademicProgram {
   };
   programCode?: string;
   programDesc?: string;
+  program_type?: { id: number; documentId?: string; programTypeDesc?: string } | null;
+}
+
+interface ProgramType {
+  id: number;
+  documentId?: string;
+  programTypeDesc?: string;
 }
 
 interface Props {
   initialData?: AcademicProgram | null;
-  onSubmit: (data: { programCode: string; programDesc: string }) => Promise<void>;
+  programTypes?: ProgramType[];
+  onSubmit: (data: { programCode: string; programDesc: string; program_type?: number | null }) => Promise<void>;
   onClose: () => void;
   loading: boolean;
 }
 
-export default function AcademicProgramForm({ initialData, onSubmit, onClose, loading }: Props) {
+export default function AcademicProgramForm({ initialData, programTypes = [], onSubmit, onClose, loading }: Props) {
   const [programCode, setProgramCode] = useState('');
   const [programDesc, setProgramDesc] = useState('');
+  const [programTypeId, setProgramTypeId] = useState<string>('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -30,6 +39,7 @@ export default function AcademicProgramForm({ initialData, onSubmit, onClose, lo
       const programDescValue = initialData.attributes?.programDesc || initialData.programDesc || '';
       setProgramCode(programCodeValue);
       setProgramDesc(programDescValue);
+      setProgramTypeId(initialData.program_type?.id ? String(initialData.program_type.id) : '');
     }
   }, [initialData]);
 
@@ -45,7 +55,11 @@ export default function AcademicProgramForm({ initialData, onSubmit, onClose, lo
     }
     setError('');
     try {
-      await onSubmit({ programCode, programDesc });
+      await onSubmit({
+        programCode,
+        programDesc,
+        program_type: programTypeId ? Number(programTypeId) : null
+      });
       onClose();
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
@@ -94,6 +108,23 @@ export default function AcademicProgramForm({ initialData, onSubmit, onClose, lo
                 className="w-full px-5 py-4 bg-zinc-50 border border-zinc-200 rounded-2xl text-zinc-900 font-medium focus:ring-2 focus:ring-indigo-600 focus:border-transparent transition-all outline-none min-h-[100px] resize-none"
                 disabled={loading}
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">
+                Program Type
+              </label>
+              <select
+                value={programTypeId}
+                onChange={(e) => setProgramTypeId(e.target.value)}
+                className="w-full px-5 py-4 bg-zinc-50 border border-zinc-200 rounded-2xl text-zinc-900 font-medium focus:ring-2 focus:ring-indigo-600 focus:border-transparent transition-all outline-none appearance-none"
+                disabled={loading}
+              >
+                <option value="">No Program Type</option>
+                {programTypes.map(pt => (
+                  <option key={pt.id} value={pt.id}>{pt.programTypeDesc}</option>
+                ))}
+              </select>
             </div>
 
             {error && (
