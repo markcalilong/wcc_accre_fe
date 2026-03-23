@@ -12,6 +12,10 @@ import ConsolidateFiles from './pages/ConsolidateFiles';
 import UserManagement from './pages/UserManagement';
 import RoleManagement from './pages/RoleManagement';
 import PendingTasks from './pages/PendingTasks';
+import CampusManagement from './pages/CampusManagement';
+import SemesterManagement from './pages/SemesterManagement';
+import ProgramTypeManagement from './pages/ProgramTypeManagement';
+import VisitTypeManagement from './pages/VisitTypeManagement';
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardLayout from './components/DashboardLayout';
 import { ArrowLeft } from 'lucide-react';
@@ -153,6 +157,46 @@ export default function App() {
             <ProtectedRoute>
               <DashboardLayout>
                 <RoleManagement />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/campuses"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <CampusManagement />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/semesters"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <SemesterManagement />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/program-types"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <ProgramTypeManagement />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/visit-types"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <VisitTypeManagement />
               </DashboardLayout>
             </ProtectedRoute>
           }

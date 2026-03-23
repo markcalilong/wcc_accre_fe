@@ -10,6 +10,7 @@ interface AcademicProgram {
   };
   programCode?: string;
   programDesc?: string;
+  program_type?: { id: number; documentId?: string; programTypeDesc?: string } | null;
 }
 
 interface Props {
@@ -50,6 +51,7 @@ export default function AcademicProgramTable({ data, loading, onEdit, onDelete }
               <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-widest">ID</th>
               <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-widest">Program Code</th>
               <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-widest">Program Description</th>
+              <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-widest">Program Type</th>
               <th className="px-6 py-4 text-xs font-bold text-zinc-400 uppercase tracking-widest text-right">Actions</th>
             </tr>
           </thead>
@@ -57,12 +59,22 @@ export default function AcademicProgramTable({ data, loading, onEdit, onDelete }
             {data.map((program) => {
               const programCode = program.attributes?.programCode || program.programCode || 'N/A';
               const programDesc = program.attributes?.programDesc || program.programDesc || 'N/A';
-              
+              const programType = program.program_type?.programTypeDesc || '';
+
               return (
                 <tr key={program.id} className="hover:bg-zinc-50/50 transition-colors">
                   <td className="px-6 py-4 text-sm font-mono text-zinc-500">#{program.id}</td>
                   <td className="px-6 py-4 text-sm font-bold text-zinc-900">{programCode}</td>
                   <td className="px-6 py-4 text-sm text-zinc-600">{programDesc}</td>
+                  <td className="px-6 py-4">
+                    {programType ? (
+                      <span className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold bg-violet-50 text-violet-600 border border-violet-100 uppercase tracking-wider">
+                        {programType}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-zinc-300 italic">None</span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button

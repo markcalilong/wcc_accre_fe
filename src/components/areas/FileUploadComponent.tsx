@@ -4,6 +4,12 @@ import { api } from '../../services/api';
 import { FileUploadMetadata } from '../../types/area';
 import { canApprove, canReview, canDelete as canDeleteFile, getAvailableStatuses } from '../../utils/roles';
 
+interface Semester {
+  id: number;
+  documentId?: string;
+  semCode?: string;
+}
+
 interface FileUploadComponentProps {
   uploads: FileUploadMetadata[];
   onUploadSuccess: (newUpload: any) => void;
@@ -12,6 +18,9 @@ interface FileUploadComponentProps {
   isSubcriteria?: boolean;
   userRole?: string;
   canUpload?: boolean;
+  semesters?: Semester[];
+  selectedSemester?: number | null;
+  onSemesterChange?: (semesterId: number | null) => void;
 }
 
 function getFileUrl(upload: FileUploadMetadata): string | null {
@@ -108,7 +117,10 @@ export default function FileUploadComponent({
   onUpdateStatus,
   isSubcriteria = false,
   userRole = '',
-  canUpload = true
+  canUpload = true,
+  semesters = [],
+  selectedSemester = null,
+  onSemesterChange
 }: FileUploadComponentProps) {
   const roleKey = userRole.toLowerCase().replace(/\s+/g, '_');
   const hasReviewAccess = canReview(roleKey);
@@ -149,7 +161,8 @@ export default function FileUploadComponent({
           fileName: file.name,
           fileStatus: 'On-going Review',
           remarks: '',
-          uploader: { id: user.id, username: user.username }
+          uploader: { id: user.id, username: user.username },
+          ...(selectedSemester ? { semester: { id: selectedSemester } } : {})
         });
       }
     } catch (err: any) {
@@ -185,28 +198,42 @@ export default function FileUploadComponent({
         <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
           {isSubcriteria ? 'Sub-Criteria Uploads' : 'Criteria Uploads'}
         </h4>
-        {canUpload ? (
-          <>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-white bg-[#4a86f7] hover:bg-blue-600 rounded-lg transition-all disabled:opacity-50"
+        <div className="flex items-center gap-2">
+          {canUpload && semesters.length > 0 && onSemesterChange && (
+            <select
+              value={selectedSemester || ''}
+              onChange={(e) => onSemesterChange(e.target.value ? Number(e.target.value) : null)}
+              className="px-2 py-1 text-[10px] font-bold bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 appearance-none"
             >
-              {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
-              Upload PDF
-            </button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              accept=".pdf"
-              multiple
-              className="hidden"
-            />
-          </>
-        ) : (
-          <span className="text-[10px] text-zinc-400 italic">No upload permission</span>
-        )}
+              <option value="">No Semester</option>
+              {semesters.map(s => (
+                <option key={s.id} value={s.id}>{s.semCode}</option>
+              ))}
+            </select>
+          )}
+          {canUpload ? (
+            <>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-white bg-[#4a86f7] hover:bg-blue-600 rounded-lg transition-all disabled:opacity-50"
+              >
+                {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                Upload PDF
+              </button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept=".pdf"
+                multiple
+                className="hidden"
+              />
+            </>
+          ) : (
+            <span className="text-[10px] text-zinc-400 italic">No upload permission</span>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -244,6 +271,11 @@ export default function FileUploadComponent({
                     )}
                     <div className="flex items-center gap-2 mt-0.5">
                       {getStatusBadge(upload.fileStatus)}
+                      {(upload as any).semester?.semCode && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0 rounded-full text-[9px] font-bold bg-cyan-50 text-cyan-600 border border-cyan-100 uppercase tracking-wider">
+                          {(upload as any).semester.semCode}
+                        </span>
+                      )}
                       {upload.remarks && (
                         <span className="text-[10px] text-zinc-400 truncate max-w-[150px]">
                           • {upload.remarks}
