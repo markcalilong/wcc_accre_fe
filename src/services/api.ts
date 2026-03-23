@@ -2,6 +2,17 @@ import qs from 'qs';
 
 const BASE_URL = 'https://wcc-accre.onrender.com';
 
+/** Strapi v5 can return duplicate entries (draft/publish). Deduplicate by documentId, keeping first occurrence. */
+function deduplicateByDocumentId(items: any[]): any[] {
+  const seen = new Set<string>();
+  return items.filter(item => {
+    if (!item.documentId) return true;
+    if (seen.has(item.documentId)) return false;
+    seen.add(item.documentId);
+    return true;
+  });
+}
+
 export const api = {
   /**
    * Register a new user
@@ -124,7 +135,7 @@ export const api = {
       console.error('API Error Response:', result);
       throw new Error(result.error?.message || 'Failed to fetch academic years');
     }
-    return result.data; // Strapi returns { data: [...] }
+    return deduplicateByDocumentId(result.data);
   },
 
   createAcademicYear: async (token: string, data: any) => {
@@ -196,7 +207,7 @@ export const api = {
       console.error('API Error Response:', result);
       throw new Error(result.error?.message || 'Failed to fetch academic programs');
     }
-    return result.data;
+    return deduplicateByDocumentId(result.data);
   },
 
   createAcademicProgram: async (token: string, data: any) => {
@@ -288,7 +299,7 @@ export const api = {
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error?.message || 'Failed to fetch areas');
-    return result.data;
+    return deduplicateByDocumentId(result.data);
   },
 
   getAreaById: async (token: string, id: string | number) => {
@@ -398,7 +409,7 @@ export const api = {
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error?.message || 'Failed to fetch personel roles');
-    return result.data;
+    return deduplicateByDocumentId(result.data);
   },
 
   createPersonelRole: async (token: string, data: any) => {
@@ -513,7 +524,7 @@ export const api = {
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error?.message || 'Failed to fetch campuses');
-    return result.data;
+    return deduplicateByDocumentId(result.data);
   },
   createCampus: async (token: string, data: any) => {
     const response = await fetch(`${BASE_URL}/api/campuses`, {
@@ -551,7 +562,7 @@ export const api = {
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error?.message || 'Failed to fetch semesters');
-    return result.data;
+    return deduplicateByDocumentId(result.data);
   },
   createSemester: async (token: string, data: any) => {
     const response = await fetch(`${BASE_URL}/api/semesters`, {
@@ -589,7 +600,7 @@ export const api = {
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error?.message || 'Failed to fetch program types');
-    return result.data;
+    return deduplicateByDocumentId(result.data);
   },
   createProgramType: async (token: string, data: any) => {
     const response = await fetch(`${BASE_URL}/api/programs`, {
@@ -627,7 +638,7 @@ export const api = {
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error?.message || 'Failed to fetch visit types');
-    return result.data;
+    return deduplicateByDocumentId(result.data);
   },
   createVisitType: async (token: string, data: any) => {
     const response = await fetch(`${BASE_URL}/api/visit-types`, {
