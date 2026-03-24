@@ -18,6 +18,7 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
   const [years, setYears] = useState<any[]>([]);
   const [campuses, setCampuses] = useState<any[]>([]);
   const [visitTypes, setVisitTypes] = useState<any[]>([]);
+  const [semesters, setSemesters] = useState<any[]>([]);
 
   const [formData, setFormData] = useState({
     area: '',
@@ -26,6 +27,9 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
     remarks: '',
     campus: '' as string,
     visit: '' as string,
+    academic_program: '' as string,
+    academic_year: '' as string,
+    semester: '' as string,
     areaCriteria: [] as any[]
   });
 
@@ -38,13 +42,12 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
           areaDesc: area.areaDesc || '',
           proposedExhibits: area.proposedExhibits || '',
           remarks: area.remarks || '',
-          campus: (area as any).campus?.id?.toString() || '',
-          visit: (area as any).visit?.id?.toString() || '',
-          areaCriteria: area.areaCriteria?.map(c => ({
-            ...c,
-            academic_program: c.academic_program?.id?.toString() || '',
-            academic_year: c.academic_year?.id?.toString() || '',
-          })) || []
+          campus: area.campus?.id?.toString() || '',
+          visit: area.visit?.id?.toString() || '',
+          academic_program: area.academic_program?.id?.toString() || '',
+          academic_year: area.academic_year?.id?.toString() || '',
+          semester: area.semester?.id?.toString() || '',
+          areaCriteria: area.areaCriteria?.map(c => ({ ...c })) || []
         });
       } else {
         setFormData({
@@ -54,6 +57,9 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
           remarks: '',
           campus: '',
           visit: '',
+          academic_program: '',
+          academic_year: '',
+          semester: '',
           areaCriteria: []
         });
       }
@@ -65,16 +71,18 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
     if (!token) return;
 
     try {
-      const [programsData, yearsData, campusesData, visitTypesData] = await Promise.all([
+      const [programsData, yearsData, campusesData, visitTypesData, semestersData] = await Promise.all([
         api.getAcademicPrograms(token),
         api.getAcademicYears(token),
         api.getCampuses(token).catch(() => []),
-        api.getVisitTypes(token).catch(() => [])
+        api.getVisitTypes(token).catch(() => []),
+        api.getSemesters(token).catch(() => [])
       ]);
       setPrograms(programsData);
       setYears(yearsData);
       setCampuses(campusesData);
       setVisitTypes(visitTypesData);
+      setSemesters(semestersData);
     } catch (err: any) {
       console.error('Failed to fetch options:', err);
     }
@@ -94,7 +102,6 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
         const fileData = Array.isArray(u.fileUpload) ? u.fileUpload[0] : u.fileUpload;
         const uploaderData = Array.isArray(u.uploader) ? u.uploader[0] : u.uploader;
         const approverData = Array.isArray(u.approver) ? u.approver[0] : u.approver;
-        const semesterData = u.semester;
 
         const { documentId: _uDocId, id: uId, ...restU } = u;
         return {
@@ -103,21 +110,24 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
           fileUpload: fileData?.id || fileData?.data?.id || (Array.isArray(fileData?.data) ? fileData?.data[0]?.id : undefined) || fileData,
           uploader: uploaderData?.id || uploaderData?.data?.id || (Array.isArray(uploaderData?.data) ? uploaderData?.data[0]?.id : undefined) || uploaderData,
           approver: approverData?.id || approverData?.data?.id || (Array.isArray(approverData?.data) ? approverData?.data[0]?.id : undefined) || approverData,
-          semester: semesterData?.id || semesterData || null,
         };
       });
 
       const payload = {
-        ...formData,
+        area: formData.area,
+        areaDesc: formData.areaDesc,
+        proposedExhibits: formData.proposedExhibits,
+        remarks: formData.remarks,
         campus: formData.campus ? Number(formData.campus) : null,
         visit: formData.visit ? Number(formData.visit) : null,
+        academic_program: formData.academic_program ? Number(formData.academic_program) : null,
+        academic_year: formData.academic_year ? Number(formData.academic_year) : null,
+        semester: formData.semester ? Number(formData.semester) : null,
         areaCriteria: formData.areaCriteria.map(c => {
           const { documentId: _cDocId, id: cId, ...restC } = c;
           return {
             ...restC,
             ...(typeof cId === 'number' ? { id: cId } : {}),
-            academic_program: c.academic_program ? Number(c.academic_program) : null,
-            academic_year: c.academic_year ? Number(c.academic_year) : null,
             criteriaUploads: cleanUploads(c.criteriaUploads || []),
             subcriteria: (c.subcriteria || []).map((sc: any) => {
               const { documentId: _scDocId, id: scId, ...restSc } = sc;
@@ -140,17 +150,14 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
         const oldToNewMap: Record<string, string | null> = {};
         let hasCodeChanges = false;
 
-        // Match by id to detect renames
         for (const oldC of oldCriteria) {
           const matchingNew = newCriteria.find((nc: any) => nc.id === oldC.id);
           if (!matchingNew) {
-            // Criteria was deleted
             if (oldC.code) {
               oldToNewMap[oldC.code] = null;
               hasCodeChanges = true;
             }
           } else if (matchingNew.code !== oldC.code && oldC.code) {
-            // Criteria code was renamed
             oldToNewMap[oldC.code] = matchingNew.code;
             hasCodeChanges = true;
           }
@@ -158,7 +165,6 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
 
         await api.updateArea(token, area.documentId || area.id, payload);
 
-        // Sync allowedCriteria in roles if any codes changed
         if (hasCodeChanges) {
           try {
             await api.syncAllowedCriteria(token, area.area, oldToNewMap);
@@ -184,7 +190,7 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
       ...formData,
       areaCriteria: [
         ...formData.areaCriteria,
-        { code: '', desc: '', academic_program: '', academic_year: '', subcriteria: [] }
+        { code: '', desc: '', subcriteria: [] }
       ]
     });
   };
@@ -356,6 +362,7 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
                 />
               </div>
 
+              {/* Area-level scope: Campus, Visit Type, Program, Year, Semester */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest px-1">Campus</label>
@@ -380,6 +387,48 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
                     <option value="">No Visit Type</option>
                     {visitTypes.map((v: any) => (
                       <option key={v.id} value={v.id}>{v.visitType}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest px-1">Program</label>
+                  <select
+                    value={formData.academic_program}
+                    onChange={(e) => setFormData({ ...formData, academic_program: e.target.value })}
+                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm appearance-none"
+                  >
+                    <option value="">No Program</option>
+                    {programs.map(p => (
+                      <option key={p.id} value={p.id}>{p.programCode || p.attributes?.programCode}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest px-1">Academic Year</label>
+                  <select
+                    value={formData.academic_year}
+                    onChange={(e) => setFormData({ ...formData, academic_year: e.target.value })}
+                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm appearance-none"
+                  >
+                    <option value="">No Year</option>
+                    {years.map(y => (
+                      <option key={y.id} value={y.id}>{y.schoolyear || y.attributes?.schoolyear}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest px-1">Semester</label>
+                  <select
+                    value={formData.semester}
+                    onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
+                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm appearance-none"
+                  >
+                    <option value="">No Semester</option>
+                    {semesters.map(s => (
+                      <option key={s.id} value={s.id}>{s.semCode}</option>
                     ))}
                   </select>
                 </div>
@@ -457,34 +506,6 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 mt-2">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest px-1">Program</label>
-                      <select
-                        value={c.academic_program || ''}
-                        onChange={(e) => updateCriteria(idx, 'academic_program', e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-zinc-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-xs appearance-none"
-                      >
-                        <option value="">No Program (General)</option>
-                        {programs.map(p => (
-                          <option key={p.id} value={p.id}>{p.attributes?.programCode || p.programCode}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest px-1">Academic Year</label>
-                      <select
-                        value={c.academic_year || ''}
-                        onChange={(e) => updateCriteria(idx, 'academic_year', e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-zinc-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-xs appearance-none"
-                      >
-                        <option value="">No Year</option>
-                        {years.map(y => (
-                          <option key={y.id} value={y.id}>{y.attributes?.schoolyear || y.schoolyear}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
 
                   {/* Criteria Uploads */}
                   <div className="mt-4 p-4 bg-white rounded-2xl border border-zinc-100">
@@ -509,7 +530,7 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
                         Add Sub-criteria
                       </button>
                     </div>
-                    
+
                     <div className="space-y-4">
                       {c.subcriteria?.map((sc: any, sIdx: number) => (
                         <div key={sIdx} className="p-4 bg-white rounded-2xl border border-zinc-100 space-y-3 group/sub relative">
@@ -536,7 +557,7 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
                               placeholder="Sub-criteria description"
                             />
                           </div>
-                          
+
                           {/* Sub-criteria Uploads */}
                           <div className="pt-2 border-t border-zinc-50">
                             <FileUploadComponent

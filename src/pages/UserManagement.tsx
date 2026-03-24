@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Loader2, AlertCircle, RefreshCw, Users, Search, Shield, ShieldCheck, ShieldX, CheckCircle2, XCircle, Edit3, X, Save, GraduationCap } from 'lucide-react';
 import { api } from '../services/api';
+import { getUserPersonelRole, hasManagementAccess, isDeanRole } from '../utils/roles';
 
 interface PersonelRole {
   id: number;
@@ -60,12 +61,14 @@ function RoleBadge({ personelRole, strapiRole }: { personelRole?: PersonelRole; 
   // Color based on permission level
   const r = name.toLowerCase();
   let colorClass = 'bg-zinc-50 text-zinc-500 border-zinc-200';
-  if (['dean', 'librarian', 'dsa', 'physical plant', 'admin'].includes(r)) {
-    colorClass = 'bg-emerald-50 text-emerald-600 border-emerald-100';
+  if (r === 'authenticated') {
+    colorClass = 'bg-purple-50 text-purple-600 border-purple-100'; // System admin
+  } else if (['dean', 'librarian', 'dsa', 'physical plant'].includes(r)) {
+    colorClass = 'bg-emerald-50 text-emerald-600 border-emerald-100'; // Approvers
   } else if (['program head', 'area coordinator'].includes(r)) {
-    colorClass = 'bg-blue-50 text-blue-600 border-blue-100';
+    colorClass = 'bg-blue-50 text-blue-600 border-blue-100'; // Reviewers
   } else if (['faculty', 'admin staff', 'library staff'].includes(r)) {
-    colorClass = 'bg-amber-50 text-amber-600 border-amber-100';
+    colorClass = 'bg-amber-50 text-amber-600 border-amber-100'; // Uploaders
   }
 
   return (
@@ -76,11 +79,12 @@ function RoleBadge({ personelRole, strapiRole }: { personelRole?: PersonelRole; 
   );
 }
 
-function EditUserModal({ user, programs, personelRoles, allCampuses, onClose, onSave }: {
+function EditUserModal({ user, programs, personelRoles, allCampuses, isDeanEditor, onClose, onSave }: {
   user: UserRecord;
   programs: any[];
   personelRoles: PersonelRole[];
   allCampuses: CampusRecord[];
+  isDeanEditor?: boolean;
   onClose: () => void;
   onSave: (userId: number, data: Record<string, any>) => Promise<void>;
 }) {
@@ -139,11 +143,13 @@ function EditUserModal({ user, programs, personelRoles, allCampuses, onClose, on
             <label className="block text-xs font-bold text-indigo-600 uppercase tracking-widest">Personnel Role</label>
             <select value={selectedRoleId} onChange={e => setSelectedRoleId(e.target.value)} className={`${inputClass} border-indigo-200 bg-white`}>
               <option value="">No Role Assigned</option>
-              {personelRoles.map(r => (
-                <option key={r.id} value={r.id}>
-                  {r.role} {r.description ? `- ${r.description}` : ''}
-                </option>
-              ))}
+              {personelRoles
+                .filter(r => isDeanEditor ? DEAN_EDITABLE_ROLES.includes(r.role.toLowerCase().trim()) : true)
+                .map(r => (
+                  <option key={r.id} value={r.id}>
+                    {r.role} {r.description ? `- ${r.description}` : ''}
+                  </option>
+                ))}
             </select>
           </div>
 
@@ -235,7 +241,11 @@ function EditUserModal({ user, programs, personelRoles, allCampuses, onClose, on
   );
 }
 
+// Roles that deans are allowed to edit (faculty-level roles)
+const DEAN_EDITABLE_ROLES = ['faculty', 'admin staff', 'library staff'];
+
 export default function UserManagement() {
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [programs, setPrograms] = useState<any[]>([]);
   const [personelRoles, setPersonelRoles] = useState<PersonelRole[]>([]);
@@ -248,18 +258,43 @@ export default function UserManagement() {
   const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
 
+  // Current user's role info
+  const currentRoleName = useMemo(() => currentUser ? getUserPersonelRole(currentUser) : '', [currentUser]);
+  const isAdmin = useMemo(() => hasManagementAccess(currentRoleName), [currentRoleName]);
+  const isDean = useMemo(() => isDeanRole(currentRoleName), [currentRoleName]);
+
+  // Dean's program codes for scoping
+  const deanProgramCodes = useMemo(() => {
+    if (!isDean || !currentUser) return [];
+    const codes: string[] = [];
+    const coveredPrograms = currentUser?.personel_role?.coveredPrograms || [];
+    for (const cp of coveredPrograms) {
+      const code = cp.academic_program?.programCode;
+      if (code) codes.push(code.toLowerCase().trim());
+    }
+    const ownProgram = typeof currentUser?.academic_program === 'string'
+      ? currentUser.academic_program
+      : currentUser?.academic_program?.programCode;
+    if (ownProgram && !codes.includes(ownProgram.toLowerCase().trim())) {
+      codes.push(ownProgram.toLowerCase().trim());
+    }
+    return codes;
+  }, [isDean, currentUser]);
+
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem('jwt');
     if (!token) return;
     setLoading(true);
     setError(null);
     try {
-      const [usersRes, programsRes, rolesRes, campusesRes] = await Promise.all([
+      const [meRes, usersRes, programsRes, rolesRes, campusesRes] = await Promise.all([
+        api.getMe(token),
         api.getUsers(token),
         api.getAcademicPrograms().catch(() => []),
         api.getPersonelRoles(token).catch(() => []),
         api.getCampuses(token).catch(() => []),
       ]);
+      setCurrentUser(meRes);
       setUsers(Array.isArray(usersRes) ? usersRes : []);
       setPrograms(programsRes);
       setPersonelRoles(rolesRes);
@@ -297,8 +332,20 @@ export default function UserManagement() {
     fetchData();
   };
 
-  // Filter users
+  // Filter users — deans only see faculty-level users in their program
   const filteredUsers = users.filter(u => {
+    // Dean scoping: only show faculty-level users in their program
+    if (isDean && !isAdmin) {
+      const userRole = (u.personel_role?.role || u.role?.name || '').toLowerCase().trim();
+      // Only show faculty-level roles
+      if (!DEAN_EDITABLE_ROLES.includes(userRole)) return false;
+      // Only show users in dean's program(s)
+      if (deanProgramCodes.length > 0) {
+        const userProgram = (u.academic_program || '').toLowerCase().trim();
+        if (!userProgram || !deanProgramCodes.includes(userProgram)) return false;
+      }
+    }
+
     if (search) {
       const q = search.toLowerCase();
       const match = u.username.toLowerCase().includes(q) ||
@@ -345,7 +392,7 @@ export default function UserManagement() {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {editingUser && (
-        <EditUserModal user={editingUser} programs={programs} personelRoles={personelRoles} allCampuses={allCampuses} onClose={() => setEditingUser(null)} onSave={handleSaveUser} />
+        <EditUserModal user={editingUser} programs={programs} personelRoles={personelRoles} allCampuses={allCampuses} isDeanEditor={isDean && !isAdmin} onClose={() => setEditingUser(null)} onSave={handleSaveUser} />
       )}
 
       {/* Header */}
@@ -356,7 +403,11 @@ export default function UserManagement() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-zinc-900 tracking-tight">User Management</h1>
-            <p className="text-zinc-500 text-sm">Manage user accounts, activate and edit profiles.</p>
+            <p className="text-zinc-500 text-sm">
+              {isDean && !isAdmin
+                ? 'Manage faculty users in your program.'
+                : 'Manage user accounts, activate and edit profiles.'}
+            </p>
           </div>
         </div>
         <button onClick={fetchData} className="p-3 bg-white border border-zinc-100 text-zinc-400 hover:text-indigo-600 rounded-xl hover:bg-zinc-50 transition-all shadow-sm">
@@ -491,24 +542,27 @@ export default function UserManagement() {
                         >
                           <Edit3 className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => handleToggleBlock(user)}
-                          disabled={togglingId === user.id}
-                          className={`p-1.5 rounded-lg transition-all ${
-                            user.blocked
-                              ? 'text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50'
-                              : 'text-rose-400 hover:text-rose-600 hover:bg-rose-50'
-                          } disabled:opacity-50`}
-                          title={user.blocked ? 'Activate User' : 'Block User'}
-                        >
-                          {togglingId === user.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : user.blocked ? (
-                            <ShieldCheck className="w-4 h-4" />
-                          ) : (
-                            <ShieldX className="w-4 h-4" />
-                          )}
-                        </button>
+                        {/* Only admins can block/activate users */}
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleToggleBlock(user)}
+                            disabled={togglingId === user.id}
+                            className={`p-1.5 rounded-lg transition-all ${
+                              user.blocked
+                                ? 'text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50'
+                                : 'text-rose-400 hover:text-rose-600 hover:bg-rose-50'
+                            } disabled:opacity-50`}
+                            title={user.blocked ? 'Activate User' : 'Block User'}
+                          >
+                            {togglingId === user.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : user.blocked ? (
+                              <ShieldCheck className="w-4 h-4" />
+                            ) : (
+                              <ShieldX className="w-4 h-4" />
+                            )}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

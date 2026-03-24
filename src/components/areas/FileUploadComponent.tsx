@@ -4,12 +4,6 @@ import { api } from '../../services/api';
 import { FileUploadMetadata } from '../../types/area';
 import { canApprove, canReview, canDelete as canDeleteFile, getAvailableStatuses } from '../../utils/roles';
 
-interface Semester {
-  id: number;
-  documentId?: string;
-  semCode?: string;
-}
-
 interface FileUploadComponentProps {
   uploads: FileUploadMetadata[];
   onUploadSuccess: (newUpload: any) => void;
@@ -18,9 +12,6 @@ interface FileUploadComponentProps {
   isSubcriteria?: boolean;
   userRole?: string;
   canUpload?: boolean;
-  semesters?: Semester[];
-  selectedSemester?: number | null;
-  onSemesterChange?: (semesterId: number | null) => void;
 }
 
 function getFileUrl(upload: FileUploadMetadata): string | null {
@@ -118,9 +109,6 @@ export default function FileUploadComponent({
   isSubcriteria = false,
   userRole = '',
   canUpload = true,
-  semesters = [],
-  selectedSemester = null,
-  onSemesterChange
 }: FileUploadComponentProps) {
   const roleKey = userRole.toLowerCase().replace(/\s+/g, '_');
   const hasReviewAccess = canReview(roleKey);
@@ -162,7 +150,6 @@ export default function FileUploadComponent({
           fileStatus: 'On-going Review',
           remarks: '',
           uploader: { id: user.id, username: user.username },
-          ...(selectedSemester ? { semester: { id: selectedSemester } } : {})
         });
       }
     } catch (err: any) {
@@ -199,18 +186,6 @@ export default function FileUploadComponent({
           {isSubcriteria ? 'Sub-Criteria Uploads' : 'Criteria Uploads'}
         </h4>
         <div className="flex items-center gap-2">
-          {canUpload && semesters.length > 0 && onSemesterChange && (
-            <select
-              value={selectedSemester || ''}
-              onChange={(e) => onSemesterChange(e.target.value ? Number(e.target.value) : null)}
-              className="px-2 py-1 text-[10px] font-bold bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 appearance-none"
-            >
-              <option value="">No Semester</option>
-              {semesters.map(s => (
-                <option key={s.id} value={s.id}>{s.semCode}</option>
-              ))}
-            </select>
-          )}
           {canUpload ? (
             <>
               <button
@@ -271,11 +246,6 @@ export default function FileUploadComponent({
                     )}
                     <div className="flex items-center gap-2 mt-0.5">
                       {getStatusBadge(upload.fileStatus)}
-                      {(upload as any).semester?.semCode && (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0 rounded-full text-[9px] font-bold bg-cyan-50 text-cyan-600 border border-cyan-100 uppercase tracking-wider">
-                          {(upload as any).semester.semCode}
-                        </span>
-                      )}
                       {upload.remarks && (
                         <span className="text-[10px] text-zinc-400 truncate max-w-[150px]">
                           • {upload.remarks}

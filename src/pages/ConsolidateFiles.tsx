@@ -3,6 +3,7 @@ import { Loader2, AlertCircle, RefreshCw, FileText, Download, CheckSquare, Squar
 import { PDFDocument } from 'pdf-lib';
 import { api } from '../services/api';
 import { Area, FileUploadMetadata } from '../types/area';
+import { sortAreasByNumber } from '../utils/sorting';
 
 interface FlatFile {
   areaName: string;
@@ -136,19 +137,12 @@ export default function ConsolidateFiles() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Filter areas by selected program and year (now at criteria level)
-  const filteredAreas = areas.map(area => {
-    if (!selectedProgram && !selectedYear) return area;
-    const filteredCriteria = area.areaCriteria.filter(criteria => {
-      if (selectedProgram && String(criteria.academic_program?.id) !== selectedProgram) return false;
-      if (selectedYear && String(criteria.academic_year?.id) !== selectedYear) return false;
-      return true;
-    });
-    return { ...area, areaCriteria: filteredCriteria };
-  }).filter(area => {
-    if (!selectedProgram && !selectedYear) return true;
-    return area.areaCriteria.length > 0;
-  });
+  // Filter areas by selected program and year (now at area level)
+  const filteredAreas = areas.filter(area => {
+    if (selectedProgram && String(area.academic_program?.id) !== selectedProgram) return false;
+    if (selectedYear && String(area.academic_year?.id) !== selectedYear) return false;
+    return true;
+  }).sort(sortAreasByNumber);
 
   // Flatten all files from filtered areas
   const flatFiles: FlatFile[] = [];

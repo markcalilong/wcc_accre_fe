@@ -188,21 +188,12 @@ function RoleModal({ role, areas, programs, onClose, onSave }: {
                         )}
                       </div>
                       {isSelected && isAreaExpanded && criteria.length > 0 && (() => {
-                        // Group criteria by program (program-qualified keys: "BSIT:B.1")
-                        // Criteria without a program get key "CODE" (no prefix)
-                        const groupedByProgram: Record<string, { programCode: string; items: AreaCriteria[] }> = {};
-                        criteria.forEach(c => {
-                          const progCode = c.academic_program?.programCode || '';
-                          const groupKey = progCode || '__no_program__';
-                          if (!groupedByProgram[groupKey]) {
-                            groupedByProgram[groupKey] = { programCode: progCode, items: [] };
-                          }
-                          groupedByProgram[groupKey].items.push(c);
-                        });
-                        const allKeys = criteria.map(c => {
-                          const progCode = c.academic_program?.programCode;
-                          return progCode ? `${progCode}:${c.code}` : c.code;
-                        });
+                        // Simple criteria list — no more program grouping (program is on area level now)
+                        const uniqueCriteria = criteria.reduce((acc: AreaCriteria[], c) => {
+                          if (!acc.find(existing => existing.code === c.code)) acc.push(c);
+                          return acc;
+                        }, []);
+                        const allKeys = uniqueCriteria.map(c => c.code);
                         return (
                         <div className="ml-6 mt-1 mb-2 p-2 rounded-lg bg-white border border-zinc-100 space-y-2">
                           <div className="flex items-center justify-between mb-1">
@@ -215,65 +206,26 @@ function RoleModal({ role, areas, programs, onClose, onSave }: {
                             </button>
                           </div>
                           <p className="text-[9px] text-zinc-400 italic mb-1">Empty = can upload to all. Selected = can only upload to checked criteria.</p>
-                          {Object.entries(groupedByProgram).map(([groupKey, group]) => {
-                            const groupCriteriaKeys = group.items.map(c =>
-                              group.programCode ? `${group.programCode}:${c.code}` : c.code
-                            );
-                            const allGroupSelected = groupCriteriaKeys.every(k => selectedCriteria.includes(k));
+                          {uniqueCriteria.map(c => {
+                            const isCriteriaSelected = selectedCriteria.includes(c.code);
                             return (
-                              <div key={groupKey} className="space-y-0.5">
-                                {group.programCode && (
-                                  <div className="flex items-center justify-between px-2 pt-1">
-                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-indigo-600 uppercase tracking-wider">
-                                      <GraduationCap className="w-3 h-3" />
-                                      {group.programCode}
-                                    </span>
-                                    <button
-                                      onClick={() => {
-                                        setAllowedCriteriaMap(prev => {
-                                          const current = prev[area.area] || [];
-                                          if (allGroupSelected) {
-                                            return { ...prev, [area.area]: current.filter(c => !groupCriteriaKeys.includes(c)) };
-                                          }
-                                          const toAdd = groupCriteriaKeys.filter(k => !current.includes(k));
-                                          return { ...prev, [area.area]: [...current, ...toAdd] };
-                                        });
-                                      }}
-                                      className="text-[8px] font-bold text-indigo-400 hover:text-indigo-700"
-                                    >
-                                      {allGroupSelected ? 'Deselect' : 'Select'} all {group.programCode}
-                                    </button>
-                                  </div>
-                                )}
-                                {!group.programCode && (
-                                  <div className="px-2 pt-1">
-                                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">General (No Program)</span>
-                                  </div>
-                                )}
-                                {group.items.map(c => {
-                                  const criteriaKey = group.programCode ? `${group.programCode}:${c.code}` : c.code;
-                                  const isCriteriaSelected = selectedCriteria.includes(criteriaKey);
-                                  return (
-                                    <button
-                                      key={criteriaKey}
-                                      onClick={() => toggleCriteria(area.area, criteriaKey)}
-                                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-[10px] font-medium transition-all ${
-                                        isCriteriaSelected
-                                          ? 'bg-indigo-50 text-indigo-700'
-                                          : 'text-zinc-500 hover:bg-zinc-50'
-                                      }`}
-                                    >
-                                      <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
-                                        isCriteriaSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-zinc-300'
-                                      }`}>
-                                        {isCriteriaSelected && <span className="text-[7px]">✓</span>}
-                                      </div>
-                                      <span className="font-bold">{c.code}</span>
-                                      <span className="truncate">{c.desc}</span>
-                                    </button>
-                                  );
-                                })}
-                              </div>
+                              <button
+                                key={c.code}
+                                onClick={() => toggleCriteria(area.area, c.code)}
+                                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-[10px] font-medium transition-all ${
+                                  isCriteriaSelected
+                                    ? 'bg-indigo-50 text-indigo-700'
+                                    : 'text-zinc-500 hover:bg-zinc-50'
+                                }`}
+                              >
+                                <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
+                                  isCriteriaSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-zinc-300'
+                                }`}>
+                                  {isCriteriaSelected && <span className="text-[7px]">✓</span>}
+                                </div>
+                                <span className="font-bold">{c.code}</span>
+                                <span className="truncate">{c.desc}</span>
+                              </button>
                             );
                           })}
                         </div>
@@ -394,7 +346,8 @@ export default function RoleManagement() {
 
   const getPermissionLevel = (roleName: string) => {
     const r = roleName.toLowerCase();
-    if (['dean', 'librarian', 'dsa', 'physical plant', 'admin'].includes(r)) return { label: 'Approver', color: 'bg-emerald-50 text-emerald-600 border-emerald-100' };
+    if (r === 'authenticated') return { label: 'Full Control', color: 'bg-purple-50 text-purple-600 border-purple-100' };
+    if (['dean', 'librarian', 'dsa', 'physical plant'].includes(r)) return { label: 'Approver', color: 'bg-emerald-50 text-emerald-600 border-emerald-100' };
     if (['program head', 'area coordinator'].includes(r)) return { label: 'Reviewer', color: 'bg-blue-50 text-blue-600 border-blue-100' };
     return { label: 'Uploader', color: 'bg-amber-50 text-amber-600 border-amber-100' };
   };

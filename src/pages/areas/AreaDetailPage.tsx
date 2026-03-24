@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, AlertCircle, RefreshCw, Layers, Calendar, GraduationCap, FileText } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertCircle, RefreshCw, Layers, Calendar, GraduationCap, FileText, BookOpen, MapPin } from 'lucide-react';
 import { api } from '../../services/api';
 import { Area, AreaCriteria, FileUploadMetadata } from '../../types/area';
 import CriteriaCard from '../../components/areas/CriteriaCard';
@@ -34,7 +34,6 @@ export default function AreaDetailPage() {
 
   useEffect(() => {
     fetchArea();
-    // Fetch user role
     const token = localStorage.getItem('jwt');
     if (token) {
       api.getMe(token).then(user => {
@@ -49,13 +48,10 @@ export default function AreaDetailPage() {
       ...(typeof c.id === 'number' ? { id: c.id } : {}),
       code: c.code,
       desc: c.desc,
-      academic_program: c.academic_program?.id || c.academic_program || null,
-      academic_year: c.academic_year?.id || c.academic_year || null,
       criteriaUploads: c.criteriaUploads?.map((u: any) => {
         const fileData = Array.isArray(u.fileUpload) ? u.fileUpload[0] : u.fileUpload;
         const uploaderData = Array.isArray(u.uploader) ? u.uploader[0] : u.uploader;
         const approverData = Array.isArray(u.approver) ? u.approver[0] : u.approver;
-        const semesterData = u.semester;
         return {
           ...(typeof u.id === 'number' ? { id: u.id } : {}),
           fileName: u.fileName,
@@ -64,7 +60,6 @@ export default function AreaDetailPage() {
           fileUpload: fileData?.id || fileData?.data?.id || (Array.isArray(fileData?.data) ? fileData?.data[0]?.id : undefined) || fileData,
           uploader: uploaderData?.id || uploaderData?.data?.id || (Array.isArray(uploaderData?.data) ? uploaderData?.data[0]?.id : undefined) || uploaderData,
           approver: approverData?.id || approverData?.data?.id || (Array.isArray(approverData?.data) ? approverData?.data[0]?.id : undefined) || approverData,
-          semester: semesterData?.id || semesterData || null,
         };
       }) || [],
       subcriteria: c.subcriteria?.map((s: any) => ({
@@ -75,7 +70,6 @@ export default function AreaDetailPage() {
           const fileData = Array.isArray(u.fileUpload) ? u.fileUpload[0] : u.fileUpload;
           const uploaderData = Array.isArray(u.uploader) ? u.uploader[0] : u.uploader;
           const approverData = Array.isArray(u.approver) ? u.approver[0] : u.approver;
-          const semesterData = u.semester;
           return {
             ...(typeof u.id === 'number' ? { id: u.id } : {}),
             fileName: u.fileName,
@@ -84,7 +78,6 @@ export default function AreaDetailPage() {
             fileUpload: fileData?.id || fileData?.data?.id || (Array.isArray(fileData?.data) ? fileData?.data[0]?.id : undefined) || fileData,
             uploader: uploaderData?.id || uploaderData?.data?.id || (Array.isArray(uploaderData?.data) ? uploaderData?.data[0]?.id : undefined) || uploaderData,
             approver: approverData?.id || approverData?.data?.id || (Array.isArray(approverData?.data) ? approverData?.data[0]?.id : undefined) || approverData,
-            semester: semesterData?.id || semesterData || null,
           };
         }) || []
       })) || []
@@ -97,28 +90,18 @@ export default function AreaDetailPage() {
     if (!token) return;
 
     try {
-      // 1. Get current area data
       const currentArea = await api.getAreaById(token, id);
-      
-      // 2. Update the specific criteria or subcriteria's uploads
+
       const updatedCriteria = currentArea.areaCriteria.map((c: any) => {
         if (c.id === criteriaId) {
           if (subcriteriaId === null) {
-            // Add to criteria uploads
-            return {
-              ...c,
-              criteriaUploads: [...(c.criteriaUploads || []), newUpload]
-            };
+            return { ...c, criteriaUploads: [...(c.criteriaUploads || []), newUpload] };
           } else {
-            // Add to subcriteria uploads
             return {
               ...c,
               subcriteria: c.subcriteria.map((s: any) => {
                 if (s.id === subcriteriaId) {
-                  return {
-                    ...s,
-                    subCriteriaUploads: [...(s.subCriteriaUploads || []), newUpload]
-                  };
+                  return { ...s, subCriteriaUploads: [...(s.subCriteriaUploads || []), newUpload] };
                 }
                 return s;
               })
@@ -128,12 +111,10 @@ export default function AreaDetailPage() {
         return c;
       });
 
-      // 3. Update the area in Strapi
       await api.updateArea(token, id, {
         areaCriteria: cleanCriteriaForUpdate(updatedCriteria)
       });
 
-      // 4. Refetch to get the full populated data (including uploader info)
       fetchArea();
     } catch (err: any) {
       alert(err.message || 'Failed to update area with new upload');
@@ -149,19 +130,13 @@ export default function AreaDetailPage() {
       const updatedCriteria = area.areaCriteria.map((c: any) => {
         if (c.id === criteriaId) {
           if (subcriteriaId === null) {
-            return {
-              ...c,
-              criteriaUploads: c.criteriaUploads.filter((u: any) => u.id !== uploadId)
-            };
+            return { ...c, criteriaUploads: c.criteriaUploads.filter((u: any) => u.id !== uploadId) };
           } else {
             return {
               ...c,
               subcriteria: c.subcriteria.map((s: any) => {
                 if (s.id === subcriteriaId) {
-                  return {
-                    ...s,
-                    subCriteriaUploads: s.subCriteriaUploads.filter((u: any) => u.id !== uploadId)
-                  };
+                  return { ...s, subCriteriaUploads: s.subCriteriaUploads.filter((u: any) => u.id !== uploadId) };
                 }
                 return s;
               })
@@ -255,7 +230,7 @@ export default function AreaDetailPage() {
           <h3 className="text-lg font-bold text-rose-900">Failed to load area</h3>
           <p className="text-rose-600/80">{error || 'Area not found'}</p>
         </div>
-        <button 
+        <button
           onClick={() => navigate('/dashboard/areas')}
           className="px-6 py-2 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition-all"
         >
@@ -264,6 +239,10 @@ export default function AreaDetailPage() {
       </div>
     );
   }
+
+  // Filtering is now simple — area already scoped by program/year/semester
+  // Just check allowedCriteria for upload permissions
+  const isAdmin = hasManagementAccess(userRole);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -275,7 +254,7 @@ export default function AreaDetailPage() {
           <ArrowLeft className="w-5 h-5" />
           Back to List
         </button>
-        <button 
+        <button
           onClick={fetchArea}
           className="p-3 bg-white border border-zinc-100 text-zinc-400 hover:text-indigo-600 rounded-xl hover:bg-zinc-50 transition-all shadow-sm"
         >
@@ -294,20 +273,34 @@ export default function AreaDetailPage() {
             </div>
             <p className="text-zinc-500 text-lg leading-relaxed">{area.areaDesc}</p>
 
-            {((area as any).campus || (area as any).visit) && (
-              <div className="flex flex-wrap gap-2">
-                {(area as any).campus?.campusDesc && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-teal-50 text-teal-600 border border-teal-100">
-                    Campus: {(area as any).campus.campusDesc}
-                  </span>
-                )}
-                {(area as any).visit?.visitType && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-600 border border-purple-100">
-                    Visit: {(area as any).visit.visitType}
-                  </span>
-                )}
-              </div>
-            )}
+            {/* Area scope badges */}
+            <div className="flex flex-wrap gap-2">
+              {area.campus?.campusDesc && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-teal-50 text-teal-600 border border-teal-100">
+                  <MapPin className="w-3 h-3" /> {area.campus.campusDesc}
+                </span>
+              )}
+              {area.academic_program?.programCode && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-600 border border-indigo-100">
+                  <GraduationCap className="w-3 h-3" /> {area.academic_program.programCode}
+                </span>
+              )}
+              {area.academic_year?.schoolyear && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-600 border border-amber-100">
+                  <Calendar className="w-3 h-3" /> {area.academic_year.schoolyear}
+                </span>
+              )}
+              {area.semester?.semCode && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-cyan-50 text-cyan-600 border border-cyan-100">
+                  <BookOpen className="w-3 h-3" /> {area.semester.semCode}
+                </span>
+              )}
+              {area.visit?.visitType && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-600 border border-purple-100">
+                  {area.visit.visitType}
+                </span>
+              )}
+            </div>
 
             {(area.proposedExhibits || area.remarks) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-50">
@@ -326,7 +319,7 @@ export default function AreaDetailPage() {
               </div>
             )}
           </div>
-          
+
           <div className="px-4 py-3 rounded-2xl bg-zinc-50 border border-zinc-100">
             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Criteria Count</p>
             <p className="text-2xl font-bold text-zinc-900 mt-1">{area.areaCriteria.length}</p>
@@ -335,94 +328,35 @@ export default function AreaDetailPage() {
       </div>
 
       <div className="space-y-6">
-        {(() => {
-          // Filter criteria by user's program access
-          const isAdmin = hasManagementAccess(userRole);
+        <div className="flex items-center justify-between px-2">
+          <h2 className="text-xl font-bold text-zinc-900 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-indigo-600" />
+            Area Criteria
+          </h2>
+          <span className="px-3 py-1 rounded-full bg-zinc-100 text-zinc-500 text-xs font-bold uppercase tracking-widest">
+            {area.areaCriteria.length} Criteria
+          </span>
+        </div>
 
-          // allowedCriteria on the role controls BOTH visibility and upload permissions.
-          // Format: "BSBA:B.1,BSBA:B.2" — program-qualified criteria codes
-          // If allowedCriteria is set for this area → only show matching criteria
-          // If allowedCriteria is empty → fall back to program-based filter (user's academic_program + coveredPrograms)
-
-          // Get allowedCriteria for this specific area from the user's role
-          const coveredAreas = userData?.personel_role?.coveredAreas || [];
-          const matchingCoveredArea = coveredAreas.find(
-            (a: any) => (a.area_with_permission || '').toLowerCase().trim() === area.area.toLowerCase().trim()
-          );
-          const allowedCriteriaStr = matchingCoveredArea?.allowedCriteria?.trim() || '';
-
-          let filteredCriteria = area.areaCriteria;
-
-          if (!isAdmin) {
-            if (allowedCriteriaStr) {
-              // Role has specific criteria selected → only show those exact program:code matches
-              const allowedEntries = allowedCriteriaStr.split(',').map((c: string) => c.trim().toLowerCase());
-              filteredCriteria = area.areaCriteria.filter(c => {
-                const progCode = c.academic_program?.programCode?.toLowerCase().trim() || '';
-                const code = c.code.toLowerCase().trim();
-                // Match "PROGRAM:CODE" format
-                const qualifiedKey = progCode ? `${progCode}:${code}` : code;
-                return allowedEntries.includes(qualifiedKey) || (!progCode && allowedEntries.includes(code));
-              });
-            } else {
-              // No specific criteria selected → fall back to program-based filter
-              const userProgramCodes: string[] = [];
-              const roleCoveredPrograms = userData?.personel_role?.coveredPrograms || [];
-              for (const cp of roleCoveredPrograms) {
-                const code = cp.academic_program?.programCode;
-                if (code && !userProgramCodes.includes(code.toLowerCase().trim())) {
-                  userProgramCodes.push(code.toLowerCase().trim());
-                }
-              }
-              const userOwnProgram = typeof userData?.academic_program === 'string'
-                ? userData.academic_program
-                : userData?.academic_program?.programCode;
-              if (userOwnProgram && userOwnProgram.trim() && !userProgramCodes.includes(userOwnProgram.toLowerCase().trim())) {
-                userProgramCodes.push(userOwnProgram.toLowerCase().trim());
-              }
-              if (userProgramCodes.length > 0) {
-                filteredCriteria = area.areaCriteria.filter(c => {
-                  if (!c.academic_program?.programCode) return true;
-                  return userProgramCodes.includes(c.academic_program.programCode.toLowerCase().trim());
-                });
-              }
-            }
-          }
-
-          return (
-            <>
-              <div className="flex items-center justify-between px-2">
-                <h2 className="text-xl font-bold text-zinc-900 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-indigo-600" />
-                  Area Criteria
-                </h2>
-                <span className="px-3 py-1 rounded-full bg-zinc-100 text-zinc-500 text-xs font-bold uppercase tracking-widest">
-                  {filteredCriteria.length} Criteria
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 gap-6">
-                {filteredCriteria.length === 0 ? (
-                  <div className="text-center py-20 bg-white rounded-3xl border border-zinc-100 border-dashed">
-                    <p className="text-zinc-400 italic">No criteria available for your program.</p>
-                  </div>
-                ) : (
-                  filteredCriteria.map((criteria) => (
-                    <CriteriaCard
-                      key={criteria.id}
-                      criteria={criteria}
-                      onUploadSuccess={handleUploadSuccess}
-                      onDeleteUpload={handleDeleteUpload}
-                      onUpdateUploadStatus={handleUpdateUploadStatus}
-                      userRole={userRole}
-                      canUpload={userData ? canUploadToCriteria(userData, area.area, criteria.code, criteria.academic_program?.programCode) : true}
-                    />
-                  ))
-                )}
-              </div>
-            </>
-          );
-        })()}
+        <div className="grid grid-cols-1 gap-6">
+          {area.areaCriteria.length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-3xl border border-zinc-100 border-dashed">
+              <p className="text-zinc-400 italic">No criteria defined for this area.</p>
+            </div>
+          ) : (
+            area.areaCriteria.map((criteria) => (
+              <CriteriaCard
+                key={criteria.id}
+                criteria={criteria}
+                onUploadSuccess={handleUploadSuccess}
+                onDeleteUpload={handleDeleteUpload}
+                onUpdateUploadStatus={handleUpdateUploadStatus}
+                userRole={userRole}
+                canUpload={userData ? canUploadToCriteria(userData, area.area, criteria.code) : true}
+              />
+            ))
+          )}
+        </div>
       </div>
     </div>
   );

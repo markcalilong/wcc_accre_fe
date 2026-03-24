@@ -1,7 +1,8 @@
 // Role permission levels for the system
 // Uses personel_role (custom Strapi API) instead of built-in Strapi roles
 //
-// Approvers: Dean, Librarian, DSA, Physical Plant, Admin, Authenticated
+// Full Control: Authenticated (system admin) — manages everything
+// Approvers: Dean (program-scoped), Librarian, DSA, Physical Plant
 // Reviewers: Program Head, Area Coordinator
 // Uploaders: Faculty, Admin Staff, Library Staff, Public (everyone can upload)
 
@@ -10,7 +11,7 @@ const APPROVER_ROLES = [
   'librarian',
   'dsa',
   'physical plant',
-  'admin',
+  'authenticated',
 ];
 
 const REVIEWER_ROLES = [
@@ -24,10 +25,15 @@ const UPLOADER_ROLES = [
   'library staff',
 ];
 
-// Full management access (sidebar: Area Management, Academic Year/Program, Consolidate, Users, Roles)
+// Full management access (sidebar: all management pages, sees all areas/programs)
+// Only Authenticated (system admin) has full control
 const MANAGEMENT_ROLES = [
+  'authenticated',
+];
+
+// Dean-level management: can see Area Management & Monitoring for their program
+const DEAN_ROLES = [
   'dean',
-  'admin',
 ];
 
 export function normalizeRole(role: string): string {
@@ -66,6 +72,11 @@ export function hasManagementAccess(role: string): boolean {
   return MANAGEMENT_ROLES.includes(r);
 }
 
+export function isDeanRole(role: string): boolean {
+  const r = normalizeRole(role);
+  return DEAN_ROLES.includes(r);
+}
+
 // Get available status options based on role
 export function getAvailableStatuses(role: string): string[] {
   if (isApprover(role)) {
@@ -78,9 +89,9 @@ export function getAvailableStatuses(role: string): string[] {
 }
 
 // Check if a user can upload to a specific criteria within an area
-// allowedCriteria format: "BSIT:B.1,BSBA:B.2" (program-qualified) or "B.1,B.2" (legacy, matches any program)
-// programCode is optional — if provided, checks program-qualified match
-export function canUploadToCriteria(user: any, areaName: string, criteriaCode: string, programCode?: string): boolean {
+// allowedCriteria format: "B.1,B.2" — simple criteria codes
+// Since program/year/semester are now on the area level, no program-qualified codes needed
+export function canUploadToCriteria(user: any, areaName: string, criteriaCode: string): boolean {
   const role = getUserPersonelRole(user);
   const r = normalizeRole(role);
 
@@ -100,24 +111,8 @@ export function canUploadToCriteria(user: any, areaName: string, criteriaCode: s
   if (!allowed || allowed.trim() === '') return true;
 
   // Check if the criteria code is in the allowed list
-  // Supports both "PROGRAM:CODE" (new) and plain "CODE" (legacy) formats
-  const allowedEntries = allowed.split(',').map((c: string) => c.trim().toLowerCase());
-  const codeLC = criteriaCode.toLowerCase().trim();
-  const progLC = programCode?.toLowerCase().trim();
-
-  return allowedEntries.some(entry => {
-    if (entry.includes(':')) {
-      // Program-qualified: "bsit:b.1"
-      const [entryProg, entryCode] = entry.split(':');
-      if (progLC) {
-        return entryProg === progLC && entryCode === codeLC;
-      }
-      // No program provided — match just by code (backward compat)
-      return entryCode === codeLC;
-    }
-    // Legacy plain code: "b.1" — matches any program
-    return entry === codeLC;
-  });
+  const allowedCodes = allowed.split(',').map((c: string) => c.trim().toLowerCase());
+  return allowedCodes.includes(criteriaCode.toLowerCase().trim());
 }
 
 // Get allowed criteria codes for a user in a specific area

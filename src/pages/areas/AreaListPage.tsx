@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Filter, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { api } from '../../services/api';
 import { Area } from '../../types/area';
+import { sortAreasByNumber } from '../../utils/sorting';
 import AreaTable from '../../components/areas/AreaTable';
 import AreaModal from '../../components/areas/AreaModal';
 
@@ -61,12 +62,13 @@ export default function AreaListPage() {
     const searchLower = searchQuery.toLowerCase();
     const areaName = (area.area || '').toLowerCase();
     const areaDesc = (area.areaDesc || '').toLowerCase();
-    
-    const program = area.academic_program as any;
-    const programName = (program?.attributes?.programName || program?.programName || program?.attributes?.programCode || program?.programCode || '').toLowerCase();
+    const programCode = (area.academic_program?.programCode || '').toLowerCase();
+    const yearStr = (area.academic_year?.schoolyear || '').toLowerCase();
+    const semStr = (area.semester?.semCode || '').toLowerCase();
+    const campusStr = (area.campus?.campusDesc || '').toLowerCase();
 
-    return areaName.includes(searchLower) || areaDesc.includes(searchLower) || programName.includes(searchLower);
-  });
+    return areaName.includes(searchLower) || areaDesc.includes(searchLower) || programCode.includes(searchLower) || yearStr.includes(searchLower) || semStr.includes(searchLower) || campusStr.includes(searchLower);
+  }).sort(sortAreasByNumber);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
