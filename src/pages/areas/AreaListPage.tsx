@@ -99,7 +99,7 @@ export default function AreaListPage() {
             <Filter className="w-5 h-5" />
             Filter
           </button>
-          <button 
+          <button
             onClick={fetchAreas}
             className="p-4 bg-white border border-zinc-100 text-zinc-400 hover:text-indigo-600 rounded-2xl hover:bg-zinc-50 transition-all shadow-sm"
           >
@@ -122,7 +122,7 @@ export default function AreaListPage() {
             <h3 className="text-lg font-bold text-rose-900">Failed to load areas</h3>
             <p className="text-rose-600/80">{error}</p>
           </div>
-          <button 
+          <button
             onClick={fetchAreas}
             className="px-6 py-2 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition-all"
           >
@@ -130,8 +130,8 @@ export default function AreaListPage() {
           </button>
         </div>
       ) : (
-        <AreaTable 
-          areas={filteredAreas} 
+        <AreaTable
+          areas={filteredAreas}
           onDelete={handleDeleteArea}
           onEdit={handleEditArea}
         />
