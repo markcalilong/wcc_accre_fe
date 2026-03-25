@@ -4,9 +4,10 @@ import { api } from '../services/api';
 import { Area, AreaCriteria, FileUploadMetadata } from '../types/area';
 import {
   Loader2, AlertCircle, RefreshCw, CheckCircle2, FileText, Clock, Eye, X, ExternalLink,
-  ChevronDown, ChevronUp, User, Calendar, GraduationCap, Layers, Upload
+  ChevronDown, ChevronUp, User, Layers, Upload
 } from 'lucide-react';
 import { getUserPersonelRole, isApprover, isReviewer, hasManagementAccess, canUploadToCriteria } from '../utils/roles';
+import { sortAreasByNumber } from '../utils/sorting';
 
 // A pending review/approve item (has an existing upload)
 interface PendingReviewItem {
@@ -151,23 +152,9 @@ export default function PendingTasks() {
     return map;
   }, [userData]);
 
-  // Fallback program codes (used when allowedCriteria is empty for an area)
-  const fallbackProgramCodes = useMemo(() => {
-    const codes: string[] = [];
-    const roleCoveredPrograms = userData?.personel_role?.coveredPrograms || [];
-    for (const cp of roleCoveredPrograms) {
-      const code = cp.academic_program?.programCode;
-      if (code && !codes.includes(code.toLowerCase().trim())) {
-        codes.push(code.toLowerCase().trim());
-      }
-    }
-    const userOwnProgram = typeof userData?.academic_program === 'string'
-      ? userData.academic_program
-      : userData?.academic_program?.programCode;
-    if (userOwnProgram && userOwnProgram.trim() && !codes.includes(userOwnProgram.toLowerCase().trim())) {
-      codes.push(userOwnProgram.toLowerCase().trim());
-    }
-    return codes;
+  // Get user's campus IDs for filtering
+  const userCampusIds = useMemo(() => {
+    return (userData?.campuses || []).map((c: any) => c.id) as number[];
   }, [userData]);
 
   const userCoveredAreas = useMemo(() => {
@@ -176,12 +163,29 @@ export default function PendingTasks() {
     ) || [];
   }, [userData]);
 
+  // Get the user's program code for upload-level filtering
+  const userProgramCode = useMemo(() => {
+    const prog = userData?.academic_program;
+    if (typeof prog === 'string') return prog.toLowerCase().trim();
+    if (prog?.programCode) return prog.programCode.toLowerCase().trim();
+    return '';
+  }, [userData]);
+
+  // Helper: check if an upload belongs to the user's program
+  const isUploadForUserProgram = useCallback((upload: FileUploadMetadata) => {
+    if (isAdmin || !userProgramCode) return true; // admin sees all, no program = no filter
+    const uploadProg = (upload as any).academic_program?.programCode?.toLowerCase?.()?.trim?.() || '';
+    if (!uploadProg) return true; // untagged uploads are visible to all
+    return uploadProg === userProgramCode;
+  }, [isAdmin, userProgramCode]);
+
   // Build pending items list
   const pendingItems = useMemo(() => {
     const items: PendingItem[] = [];
 
     areas.forEach(area => {
-      // Filter by coveredAreas (non-admin must have area in coveredAreas)
+      // Areas are universal — no campus filtering at area level.
+      // Only filter by coveredAreas (which areas the user is assigned to).
       if (!isAdmin && userCoveredAreas.length > 0) {
         if (!userCoveredAreas.includes(area.area.toLowerCase().trim())) return;
       }
@@ -190,32 +194,23 @@ export default function PendingTasks() {
       const allowedEntries = allowedCriteriaByArea[areaNameLC];
 
       area.areaCriteria.forEach(criteria => {
-        // Filter by allowedCriteria (if set) or fall back to program-based filter
-        if (!isAdmin) {
-          if (allowedEntries && allowedEntries.length > 0) {
-            const progCode = criteria.academic_program?.programCode?.toLowerCase().trim() || '';
-            const code = criteria.code.toLowerCase().trim();
-            const qualifiedKey = progCode ? `${progCode}:${code}` : code;
-            if (!allowedEntries.includes(qualifiedKey) && !((!progCode) && allowedEntries.includes(code))) return;
-          } else {
-            // No specific criteria → fall back to program-based filter
-            if (fallbackProgramCodes.length > 0 && criteria.academic_program?.programCode) {
-              if (!fallbackProgramCodes.includes(criteria.academic_program.programCode.toLowerCase().trim())) return;
-            }
-          }
+        // Filter by allowedCriteria (if set)
+        if (!isAdmin && allowedEntries && allowedEntries.length > 0) {
+          const code = criteria.code.toLowerCase().trim();
+          if (!allowedEntries.includes(code)) return;
         }
 
-        const canUpload = userData ? canUploadToCriteria(userData, area.area, criteria.code, criteria.academic_program?.programCode) : false;
+        const canUpload = userData ? canUploadToCriteria(userData, area.area, criteria.code) : false;
 
         // === UPLOAD TASKS (for uploaders) ===
-        // Show criteria/subcriteria where user can upload but no files exist yet (or no approved files)
+        // Show criteria/subcriteria where user can upload but no files FOR THEIR PROGRAM exist yet
         if (canUpload) {
-          const criteriaUploads = criteria.criteriaUploads || [];
+          const criteriaUploads = (criteria.criteriaUploads || []).filter(isUploadForUserProgram);
           // If criteria has subcriteria, check each subcriteria individually
           if (criteria.subcriteria && criteria.subcriteria.length > 0) {
             criteria.subcriteria.forEach(sub => {
-              const subUploads = sub.subCriteriaUploads || [];
-              // Show as pending upload if no uploads exist or none are approved
+              const subUploads = (sub.subCriteriaUploads || []).filter(isUploadForUserProgram);
+              // Show as pending upload if no uploads for user's program exist or none are approved
               const hasApproved = subUploads.some(u => u.fileStatus === 'Approved');
               if (!hasApproved) {
                 items.push({
@@ -231,7 +226,7 @@ export default function PendingTasks() {
               }
             });
           } else {
-            // No subcriteria — check criteria-level uploads
+            // No subcriteria — check criteria-level uploads for user's program
             const hasApproved = criteriaUploads.some(u => u.fileStatus === 'Approved');
             if (!hasApproved) {
               items.push({
@@ -246,14 +241,15 @@ export default function PendingTasks() {
         }
 
         // === REVIEW TASKS (for reviewers) ===
+        // Only show uploads that match user's program
         if (userCanReview) {
-          criteria.criteriaUploads?.forEach(upload => {
+          criteria.criteriaUploads?.filter(isUploadForUserProgram).forEach(upload => {
             if (upload.fileStatus === 'On-going Review') {
               items.push({ type: 'review', upload, area, criteria, isSubcriteria: false });
             }
           });
           criteria.subcriteria?.forEach(sub => {
-            sub.subCriteriaUploads?.forEach(upload => {
+            sub.subCriteriaUploads?.filter(isUploadForUserProgram).forEach(upload => {
               if (upload.fileStatus === 'On-going Review') {
                 items.push({
                   type: 'review', upload, area, criteria, isSubcriteria: true,
@@ -265,14 +261,15 @@ export default function PendingTasks() {
         }
 
         // === APPROVE TASKS (for approvers) ===
+        // Only show uploads that match user's program
         if (userCanApprove) {
-          criteria.criteriaUploads?.forEach(upload => {
+          criteria.criteriaUploads?.filter(isUploadForUserProgram).forEach(upload => {
             if (upload.fileStatus === 'Reviewed') {
               items.push({ type: 'approve', upload, area, criteria, isSubcriteria: false });
             }
           });
           criteria.subcriteria?.forEach(sub => {
-            sub.subCriteriaUploads?.forEach(upload => {
+            sub.subCriteriaUploads?.filter(isUploadForUserProgram).forEach(upload => {
               if (upload.fileStatus === 'Reviewed') {
                 items.push({
                   type: 'approve', upload, area, criteria, isSubcriteria: true,
@@ -286,7 +283,7 @@ export default function PendingTasks() {
     });
 
     return items;
-  }, [areas, isAdmin, userCoveredAreas, allowedCriteriaByArea, fallbackProgramCodes, userCanApprove, userCanReview, userData]);
+  }, [areas, isAdmin, userCoveredAreas, userCampusIds, allowedCriteriaByArea, userCanApprove, userCanReview, userData]);
 
   // Filter items by active tab
   const filteredItems = useMemo(() => {
@@ -302,7 +299,7 @@ export default function PendingTasks() {
       if (!groups[key]) groups[key] = { area: item.area, items: [] };
       groups[key].items.push(item);
     });
-    return Object.values(groups);
+    return Object.values(groups).sort((a, b) => sortAreasByNumber(a.area, b.area));
   }, [filteredItems]);
 
   // Counts
@@ -354,8 +351,6 @@ export default function PendingTasks() {
         ...(typeof c.id === 'number' ? { id: c.id } : {}),
         code: c.code,
         desc: c.desc,
-        academic_program: c.academic_program?.id || c.academic_program || null,
-        academic_year: c.academic_year?.id || c.academic_year || null,
         criteriaUploads: (c.criteriaUploads || []).map((u: any) => {
           const fileData = Array.isArray(u.fileUpload) ? u.fileUpload[0] : u.fileUpload;
           const uploaderData = Array.isArray(u.uploader) ? u.uploader[0] : u.uploader;
@@ -368,6 +363,11 @@ export default function PendingTasks() {
             fileUpload: fileData?.id || fileData?.data?.id || fileData,
             uploader: uploaderData?.id || uploaderData?.data?.id || uploaderData,
             approver: approverData?.id || approverData?.data?.id || approverData,
+            campus: u.campus?.id || u.campus || null,
+            academic_program: u.academic_program?.id || u.academic_program || null,
+            academic_year: u.academic_year?.id || u.academic_year || null,
+            semester: u.semester?.id || u.semester || null,
+            visit: u.visit?.id || u.visit || null,
           };
         }),
         subcriteria: (c.subcriteria || []).map((s: any) => ({
@@ -386,6 +386,11 @@ export default function PendingTasks() {
               fileUpload: fileData?.id || fileData?.data?.id || fileData,
               uploader: uploaderData?.id || uploaderData?.data?.id || uploaderData,
               approver: approverData?.id || approverData?.data?.id || approverData,
+              campus: u.campus?.id || u.campus || null,
+              academic_program: u.academic_program?.id || u.academic_program || null,
+              academic_year: u.academic_year?.id || u.academic_year || null,
+              semester: u.semester?.id || u.semester || null,
+              visit: u.visit?.id || u.visit || null,
             };
           })
         }))
@@ -581,16 +586,6 @@ export default function PendingTasks() {
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-50 text-zinc-500 border border-zinc-100">
                                     {item.isSubcriteria ? item.subcriteriaDesc : item.criteria.desc}
                                   </span>
-                                  {item.criteria.academic_program?.programCode && (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100">
-                                      <GraduationCap className="w-3 h-3" /> {item.criteria.academic_program.programCode}
-                                    </span>
-                                  )}
-                                  {item.criteria.academic_year?.schoolyear && (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-50 text-zinc-500 border border-zinc-100">
-                                      <Calendar className="w-3 h-3" /> {item.criteria.academic_year.schoolyear}
-                                    </span>
-                                  )}
                                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-50 text-violet-600 border border-violet-100 uppercase tracking-wider">
                                     {item.existingUploadCount > 0 ? `${item.existingUploadCount} file(s) uploaded, not yet approved` : 'No files uploaded'}
                                   </span>
@@ -637,16 +632,6 @@ export default function PendingTasks() {
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-50 text-zinc-500 border border-zinc-100">
                                   {reviewItem.criteria.code}{reviewItem.isSubcriteria ? ` > ${reviewItem.subcriteriaCode}` : ''}
                                 </span>
-                                {reviewItem.criteria.academic_program?.programCode && (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-100">
-                                    <GraduationCap className="w-3 h-3" /> {reviewItem.criteria.academic_program.programCode}
-                                  </span>
-                                )}
-                                {reviewItem.criteria.academic_year?.schoolyear && (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-50 text-zinc-500 border border-zinc-100">
-                                    <Calendar className="w-3 h-3" /> {reviewItem.criteria.academic_year.schoolyear}
-                                  </span>
-                                )}
                                 {reviewItem.upload.uploader && (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-50 text-zinc-500 border border-zinc-100">
                                     <User className="w-3 h-3" /> {(reviewItem.upload.uploader as any).username || 'Unknown'}

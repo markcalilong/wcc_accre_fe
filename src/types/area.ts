@@ -21,6 +21,32 @@ export interface FileUploadMetadata {
     documentId?: string;
     username: string;
   };
+  campus?: {
+    id: number;
+    documentId?: string;
+    campusDesc?: string;
+  };
+  academic_program?: {
+    id: number;
+    documentId?: string;
+    programCode?: string;
+    programDesc?: string;
+  };
+  academic_year?: {
+    id: number;
+    documentId?: string;
+    schoolyear?: string;
+  };
+  semester?: {
+    id: number;
+    documentId?: string;
+    semCode?: string;
+  };
+  visit?: {
+    id: number;
+    documentId?: string;
+    visitType?: string;
+  };
 }
 
 export interface SubCriteria {
@@ -38,17 +64,6 @@ export interface AreaCriteria {
   desc: string;
   criteriaUploads: FileUploadMetadata[];
   subcriteria: SubCriteria[];
-  academic_program?: {
-    id: number;
-    documentId?: string;
-    programDesc?: string;
-    programCode?: string;
-  };
-  academic_year?: {
-    id: number;
-    documentId?: string;
-    schoolyear?: string;
-  };
 }
 
 export interface Area {
@@ -59,4 +74,9 @@ export interface Area {
   proposedExhibits?: string;
   remarks?: string;
   areaCriteria: AreaCriteria[];
+  campus?: {
+    id: number;
+    documentId?: string;
+    campusDesc?: string;
+  };
 }

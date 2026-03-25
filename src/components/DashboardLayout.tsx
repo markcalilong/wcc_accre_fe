@@ -2,7 +2,8 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { Loader2, LogOut, LayoutDashboard, FileText, Users, GraduationCap, BarChart3, Layers, ChevronDown, ChevronRight, FolderOpen, Shield, ClipboardCheck, Building2, Calendar, BookOpen, ClipboardList } from 'lucide-react';
-import { hasManagementAccess, getUserPersonelRole } from '../utils/roles';
+import { hasManagementAccess, getUserPersonelRole, isDeanRole } from '../utils/roles';
+import { sortAreasByNumber } from '../utils/sorting';
 
 interface UserData {
   id: number;
@@ -21,12 +22,14 @@ interface UserData {
     coveredAreas?: { id: number; area_with_permission: string; allowedCriteria?: string }[];
     coveredPrograms?: { id: number; academic_program?: { id: number; programCode?: string; programDesc?: string } }[];
   };
+  campuses?: { id: number; documentId?: string; campusDesc?: string }[];
 }
 
 interface AreaItem {
   id: number;
   documentId?: string;
   area: string;
+  campus?: { id: number; campusDesc?: string };
 }
 
 const MANAGEMENT_ITEMS = [
@@ -67,30 +70,57 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return hasManagementAccess(personelRoleName);
   }, [personelRoleName]);
 
+  const isDean = useMemo(() => {
+    return isDeanRole(personelRoleName);
+  }, [personelRoleName]);
+
   // Everyone with a personel_role sees the Tasks section
   const canSeeTasksSection = useMemo(() => {
     return !!personelRoleName && personelRoleName.toLowerCase() !== 'unknown';
   }, [personelRoleName]);
 
+  // Dean-visible management items (scoped to their program)
+  // Deans can also manage faculty users within their program
+  const DEAN_MANAGEMENT_IDS = ['area', 'area-monitoring', 'consolidate', 'users'];
+
   const filteredManagementItems = useMemo(() => {
     if (!userData) return [];
     if (isAdmin) return MANAGEMENT_ITEMS;
-    // Non-admin roles only see Area Monitoring
+    if (isDean) return MANAGEMENT_ITEMS.filter(item => DEAN_MANAGEMENT_IDS.includes(item.id));
+    // Non-admin/non-dean roles only see Area Monitoring
     return MANAGEMENT_ITEMS.filter(item => item.id === 'area-monitoring');
-  }, [userData, isAdmin]);
+  }, [userData, isAdmin, isDean]);
 
-  // Filter sidebar areas based on user's coveredAreas
+  // Get user's campus IDs for filtering
+  const userCampusIds = useMemo(() => {
+    return (userData?.campuses || []).map((c: { id: number }) => c.id);
+  }, [userData]);
+
+  // Filter sidebar areas based on user's coveredAreas and campus
   const filteredAreas = useMemo(() => {
     if (!userData) return areas;
     if (isAdmin) return areas;
+
+    // Campus filter helper — if user has campuses, area must match one
+    const passesCampusFilter = (area: AreaItem) => {
+      if (userCampusIds.length === 0) return true;
+      if (!area.campus?.id) return true; // area has no campus assigned, allow through
+      return userCampusIds.includes(area.campus.id);
+    };
+
+    // Deans are campus + program scoped
+    if (isDean) {
+      return areas.filter(area => passesCampusFilter(area));
+    }
+
     const coveredAreaNames = userData.personel_role?.coveredAreas?.map(
       a => a.area_with_permission.toLowerCase().trim()
     ) || [];
     if (coveredAreaNames.length === 0) return [];
     return areas.filter(area =>
-      coveredAreaNames.includes(area.area.toLowerCase().trim())
+      coveredAreaNames.includes(area.area.toLowerCase().trim()) && passesCampusFilter(area)
     );
-  }, [userData, areas, isAdmin]);
+  }, [userData, areas, isAdmin, isDean, userCampusIds]);
 
   // Auto-expand section if current path is inside it
   useEffect(() => {
@@ -124,7 +154,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           id: a.id,
           documentId: a.documentId,
           area: a.area,
-        })));
+          campus: a.campus ? { id: a.campus.id, campusDesc: a.campus.campusDesc } : undefined,
+        })).sort(sortAreasByNumber));
       } catch (err: any) {
         if (err.message.includes('invalid') || err.message.includes('expired')) {
           localStorage.removeItem('jwt');
