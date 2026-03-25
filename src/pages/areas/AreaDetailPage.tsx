@@ -4,7 +4,7 @@ import { ArrowLeft, Loader2, AlertCircle, RefreshCw, Layers, FileText } from 'lu
 import { api } from '../../services/api';
 import { Area, AreaCriteria, FileUploadMetadata } from '../../types/area';
 import CriteriaCard from '../../components/areas/CriteriaCard';
-import { getUserPersonelRole, canUploadToCriteria, hasManagementAccess } from '../../utils/roles';
+import { getUserPersonelRole, canUploadToCriteria, hasManagementAccess, isDeanRole } from '../../utils/roles';
 
 export default function AreaDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -73,6 +73,9 @@ export default function AreaDetailPage() {
   }, [fetchArea]);
 
   const isAdmin = hasManagementAccess(userRole);
+  const isDean = isDeanRole(userRole);
+  const showProgramFilter = isAdmin || isDean;
+  const showCampusFilter = isAdmin;
 
   // Auto-set program and campus filters based on user profile (non-admin only)
   useEffect(() => {
@@ -176,10 +179,8 @@ export default function AreaDetailPage() {
   const missingFilters = [
     !selectedYear && 'Academic Year',
     !selectedSemester && 'Semester',
-    ...(!isAdmin ? [] : [
-      !selectedCampus && 'Campus',
-      !selectedProgram && 'Academic Program',
-    ]),
+    ...(showCampusFilter ? [!selectedCampus && 'Campus'] : []),
+    ...(showProgramFilter ? [!selectedProgram && 'Academic Program'] : []),
   ].filter(Boolean);
 
   const handleUploadSuccess = async (criteriaId: number, subcriteriaId: number | null, newUpload: any) => {
@@ -344,7 +345,7 @@ export default function AreaDetailPage() {
           <p className="text-rose-600/80">{error || 'Area not found'}</p>
         </div>
         <button
-          onClick={() => navigate('/dashboard/areas')}
+          onClick={() => navigate(isAdmin ? '/dashboard/areas' : '/dashboard/area-monitoring')}
           className="px-6 py-2 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition-all"
         >
           Back to Areas
@@ -357,7 +358,7 @@ export default function AreaDetailPage() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex items-center justify-between gap-6">
         <button
-          onClick={() => navigate('/dashboard/areas')}
+          onClick={() => navigate(isAdmin ? '/dashboard/areas' : '/dashboard/area-monitoring')}
           className="flex items-center gap-2 px-4 py-2 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-xl transition-all"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -425,7 +426,7 @@ export default function AreaDetailPage() {
 
       {/* Upload Filters */}
       <div className={`flex flex-col sm:flex-row gap-4`}>
-        {isAdmin && (
+        {showCampusFilter && (
           <div className="flex-1">
             <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Campus</label>
             <select
@@ -442,7 +443,7 @@ export default function AreaDetailPage() {
             </select>
           </div>
         )}
-        {isAdmin && (
+        {showProgramFilter && (
           <div className="flex-1">
             <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Academic Program</label>
             <select
