@@ -4,7 +4,7 @@ import { PDFDocument } from 'pdf-lib';
 import { api } from '../services/api';
 import { Area, FileUploadMetadata } from '../types/area';
 import { sortAreasByNumber } from '../utils/sorting';
-import { hasManagementAccess, getUserPersonelRole } from '../utils/roles';
+import { hasManagementAccess, getUserPersonelRole, isDeanRole } from '../utils/roles';
 
 interface FlatFile {
   areaName: string;
@@ -124,6 +124,9 @@ export default function ConsolidateFiles() {
 
   const userRole = userData ? getUserPersonelRole(userData) : '';
   const isAdmin = hasManagementAccess(userRole);
+  const isDean = isDeanRole(userRole);
+  const showProgramFilter = isAdmin || isDean;
+  const showCampusFilter = isAdmin;
 
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem('jwt');
@@ -431,7 +434,7 @@ export default function ConsolidateFiles() {
           <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Filters</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {isAdmin && (
+          {showProgramFilter && (
             <div className="space-y-1.5">
               <label className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
                 <GraduationCap className="w-3.5 h-3.5" /> Academic Program
@@ -467,7 +470,7 @@ export default function ConsolidateFiles() {
               ))}
             </select>
           </div>
-          {isAdmin && (
+          {showCampusFilter && (
             <div className="space-y-1.5">
               <label className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
                 <MapPin className="w-3.5 h-3.5" /> Campus

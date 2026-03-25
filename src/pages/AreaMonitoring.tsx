@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { Area, AreaCriteria, FileUploadMetadata } from '../types/area';
 import { Loader2, AlertCircle, RefreshCw, FileCheck, Clock, CheckCircle2, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
-import { hasManagementAccess, getUserPersonelRole } from '../utils/roles';
+import { hasManagementAccess, getUserPersonelRole, isDeanRole } from '../utils/roles';
 import { sortAreasByNumber } from '../utils/sorting';
 
 function getUploadStatus(uploads: FileUploadMetadata[]): 'none' | 'uploaded' | 'reviewed' | 'approved' {
@@ -208,6 +208,9 @@ export default function AreaMonitoring() {
   }, [userData]);
 
   const isAdmin = useMemo(() => hasManagementAccess(personelRoleName), [personelRoleName]);
+  const isDean = useMemo(() => isDeanRole(personelRoleName), [personelRoleName]);
+  const showProgramFilter = isAdmin || isDean;
+  const showCampusFilter = isAdmin;
 
   const userCoveredAreas = useMemo(() => {
     return userData?.personel_role?.coveredAreas?.map(
@@ -332,8 +335,8 @@ export default function AreaMonitoring() {
       )}
 
       {/* Filters */}
-      <div className={`grid grid-cols-1 sm:grid-cols-2 ${isAdmin ? 'lg:grid-cols-5' : 'lg:grid-cols-3'} gap-4`}>
-        {isAdmin && (
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${isAdmin ? 'lg:grid-cols-5' : showProgramFilter ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
+        {showProgramFilter && (
           <div>
             <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Academic Program</label>
             <select
@@ -395,7 +398,7 @@ export default function AreaMonitoring() {
             ))}
           </select>
         </div>
-        {isAdmin && (
+        {showCampusFilter && (
           <div>
             <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Campus</label>
             <select
