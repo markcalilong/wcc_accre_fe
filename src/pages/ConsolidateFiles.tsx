@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Loader2, AlertCircle, RefreshCw, FileText, Download, CheckSquare, Square, Filter, Layers, Calendar, GraduationCap, ChevronDown, ChevronUp, Eye, X, ExternalLink } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, FileText, Download, CheckSquare, Square, Filter, Layers, Calendar, GraduationCap, ChevronDown, ChevronUp, Eye, X, ExternalLink, BookOpen, MapPin } from 'lucide-react';
 import { PDFDocument } from 'pdf-lib';
 import { api } from '../services/api';
 import { Area, FileUploadMetadata } from '../types/area';
 import { sortAreasByNumber } from '../utils/sorting';
+import { hasManagementAccess, getUserPersonelRole } from '../utils/roles';
 
 interface FlatFile {
   areaName: string;
@@ -104,8 +105,14 @@ export default function ConsolidateFiles() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [programs, setPrograms] = useState<any[]>([]);
   const [years, setYears] = useState<any[]>([]);
+  const [semesters, setSemesters] = useState<any[]>([]);
+  const [visitTypes, setVisitTypes] = useState<any[]>([]);
+  const [campuses, setCampuses] = useState<any[]>([]);
   const [selectedProgram, setSelectedProgram] = useState('');
   const [selectedYear, setSelectedYear] = useState('');
+  const [selectedSemester, setSelectedSemester] = useState('');
+  const [selectedVisit, setSelectedVisit] = useState('');
+  const [selectedCampus, setSelectedCampus] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
@@ -113,6 +120,10 @@ export default function ConsolidateFiles() {
   const [expandedAreas, setExpandedAreas] = useState<Set<string>>(new Set());
   const [viewingPdf, setViewingPdf] = useState<{ url: string; fileName: string } | null>(null);
   const [consolidatedBlobUrl, setConsolidatedBlobUrl] = useState<string | null>(null);
+  const [userData, setUserData] = useState<any>(null);
+
+  const userRole = userData ? getUserPersonelRole(userData) : '';
+  const isAdmin = hasManagementAccess(userRole);
 
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem('jwt');
@@ -120,14 +131,22 @@ export default function ConsolidateFiles() {
     setLoading(true);
     setError(null);
     try {
-      const [areasData, programsResult, yearsResult] = await Promise.all([
+      const [areasData, programsResult, yearsResult, semestersResult, visitTypesResult, campusesResult, userResult] = await Promise.all([
         api.getAreas(token),
         api.getAcademicPrograms().catch(() => []),
         api.getAcademicYears(token).catch(() => []),
+        api.getSemesters(token).catch(() => []),
+        api.getVisitTypes(token).catch(() => []),
+        api.getCampuses(token).catch(() => []),
+        api.getMe(token).catch(() => null),
       ]);
       setAreas(areasData);
       setPrograms(programsResult);
       setYears(yearsResult);
+      setSemesters(semestersResult);
+      setVisitTypes(visitTypesResult);
+      setCampuses(campusesResult);
+      setUserData(userResult);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch data');
     } finally {
@@ -137,18 +156,43 @@ export default function ConsolidateFiles() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Filter areas by selected program and year (now at area level)
-  const filteredAreas = areas.filter(area => {
-    if (selectedProgram && String(area.academic_program?.id) !== selectedProgram) return false;
-    if (selectedYear && String(area.academic_year?.id) !== selectedYear) return false;
-    return true;
-  }).sort(sortAreasByNumber);
+  // Auto-set program and campus for non-admin users
+  useEffect(() => {
+    if (!userData) return;
+    if (hasManagementAccess(getUserPersonelRole(userData))) return;
 
-  // Flatten all files from filtered areas
+    const userProg = typeof userData.academic_program === 'string'
+      ? userData.academic_program
+      : userData.academic_program?.programCode;
+    if (userProg && programs.length > 0 && !selectedProgram) {
+      const match = programs.find((p: any) => (p.programCode || '').toLowerCase() === userProg.toLowerCase());
+      if (match) setSelectedProgram(String(match.id));
+    }
+
+    const userCampuses = userData.campuses || [];
+    if (userCampuses.length > 0 && campuses.length > 0 && !selectedCampus) {
+      setSelectedCampus(String(userCampuses[0].id));
+    }
+  }, [userData, programs, campuses, selectedProgram, selectedCampus]);
+
+  // All areas are always shown (sorted), filtering is at upload level
+  const sortedAreas = [...areas].sort(sortAreasByNumber);
+
+  const matchesFilters = (upload: FileUploadMetadata): boolean => {
+    if (selectedProgram && String(upload.academic_program?.id) !== selectedProgram) return false;
+    if (selectedYear && String(upload.academic_year?.id) !== selectedYear) return false;
+    if (selectedSemester && String(upload.semester?.id) !== selectedSemester) return false;
+    if (selectedVisit && String(upload.visit?.id) !== selectedVisit) return false;
+    if (selectedCampus && String(upload.campus?.id) !== selectedCampus) return false;
+    return true;
+  };
+
+  // Flatten all files from areas, filtering at upload level
   const flatFiles: FlatFile[] = [];
-  filteredAreas.forEach(area => {
+  sortedAreas.forEach(area => {
     area.areaCriteria?.forEach(criteria => {
       criteria.criteriaUploads?.forEach(upload => {
+        if (!matchesFilters(upload)) return;
         const url = getFileUrl(upload);
         if (url) {
           flatFiles.push({
@@ -162,6 +206,7 @@ export default function ConsolidateFiles() {
       });
       criteria.subcriteria?.forEach(sub => {
         sub.subCriteriaUploads?.forEach(upload => {
+          if (!matchesFilters(upload)) return;
           const url = getFileUrl(upload);
           if (url) {
             flatFiles.push({
@@ -257,7 +302,10 @@ export default function ConsolidateFiles() {
   const getConsolidatedFileName = () => {
     const programLabel = programs.find(p => String(p.id) === selectedProgram)?.programCode || 'ALL';
     const yearLabel = years.find(y => String(y.id) === selectedYear)?.schoolyear || 'ALL';
-    return `Consolidated_${programLabel}_${yearLabel}.pdf`;
+    const semesterLabel = semesters.find(s => String(s.id) === selectedSemester)?.semCode || '';
+    const parts = ['Consolidated', programLabel, yearLabel];
+    if (semesterLabel) parts.push(semesterLabel);
+    return `${parts.join('_')}.pdf`;
   };
 
   const handleMerge = async () => {
@@ -360,30 +408,48 @@ export default function ConsolidateFiles() {
         </button>
       </div>
 
+      {/* User context info (non-admin) */}
+      {!isAdmin && userData && (
+        <div className="flex flex-wrap items-center gap-3">
+          {userData.academic_program && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-100 text-xs font-bold text-indigo-700 uppercase tracking-wider">
+              {userData.academic_program.programCode || userData.academic_program}
+            </span>
+          )}
+          {userData.campuses?.[0] && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-50 border border-violet-100 text-xs font-bold text-violet-700 uppercase tracking-wider">
+              {userData.campuses[0].campusDesc || userData.campuses[0].campusName || 'Campus'}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Filters */}
       <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
         <div className="flex items-center gap-2 mb-4">
           <Filter className="w-4 h-4 text-zinc-400" />
           <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Filters</h3>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <label className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
-              <GraduationCap className="w-3.5 h-3.5" /> Academic Program
-            </label>
-            <select
-              value={selectedProgram}
-              onChange={e => { setSelectedProgram(e.target.value); setSelectedFiles(new Set()); }}
-              className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-            >
-              <option value="">All Programs</option>
-              {programs.map(p => (
-                <option key={p.id} value={String(p.id)}>
-                  {p.programCode || p.attributes?.programCode}{p.programDesc ? ` - ${p.programDesc}` : p.attributes?.programDesc ? ` - ${p.attributes.programDesc}` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {isAdmin && (
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                <GraduationCap className="w-3.5 h-3.5" /> Academic Program
+              </label>
+              <select
+                value={selectedProgram}
+                onChange={e => { setSelectedProgram(e.target.value); setSelectedFiles(new Set()); }}
+                className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+              >
+                <option value="">All Programs</option>
+                {programs.map(p => (
+                  <option key={p.id} value={String(p.id)}>
+                    {p.programCode || p.attributes?.programCode}{p.programDesc ? ` - ${p.programDesc}` : p.attributes?.programDesc ? ` - ${p.attributes.programDesc}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="space-y-1.5">
             <label className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
               <Calendar className="w-3.5 h-3.5" /> Academic Year
@@ -397,6 +463,59 @@ export default function ConsolidateFiles() {
               {years.map(y => (
                 <option key={y.id} value={String(y.id)}>
                   {y.schoolyear || y.attributes?.schoolyear}
+                </option>
+              ))}
+            </select>
+          </div>
+          {isAdmin && (
+            <div className="space-y-1.5">
+              <label className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                <MapPin className="w-3.5 h-3.5" /> Campus
+              </label>
+              <select
+                value={selectedCampus}
+                onChange={e => { setSelectedCampus(e.target.value); setSelectedFiles(new Set()); }}
+                className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+              >
+                <option value="">All Campuses</option>
+                {campuses.map(c => (
+                  <option key={c.id} value={String(c.id)}>
+                    {c.campusDesc || c.attributes?.campusDesc}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="space-y-1.5">
+            <label className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+              <BookOpen className="w-3.5 h-3.5" /> Semester
+            </label>
+            <select
+              value={selectedSemester}
+              onChange={e => { setSelectedSemester(e.target.value); setSelectedFiles(new Set()); }}
+              className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+            >
+              <option value="">All Semesters</option>
+              {semesters.map(s => (
+                <option key={s.id} value={String(s.id)}>
+                  {s.semCode || s.attributes?.semCode}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+              <Filter className="w-3.5 h-3.5" /> Visit Type
+            </label>
+            <select
+              value={selectedVisit}
+              onChange={e => { setSelectedVisit(e.target.value); setSelectedFiles(new Set()); }}
+              className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+            >
+              <option value="">All Visit Types</option>
+              {visitTypes.map(v => (
+                <option key={v.id} value={String(v.id)}>
+                  {v.visitType || v.attributes?.visitType}
                 </option>
               ))}
             </select>

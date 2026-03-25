@@ -14,11 +14,7 @@ interface AreaModalProps {
 export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [programs, setPrograms] = useState<any[]>([]);
-  const [years, setYears] = useState<any[]>([]);
   const [campuses, setCampuses] = useState<any[]>([]);
-  const [visitTypes, setVisitTypes] = useState<any[]>([]);
-  const [semesters, setSemesters] = useState<any[]>([]);
 
   const [formData, setFormData] = useState({
     area: '',
@@ -26,10 +22,6 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
     proposedExhibits: '',
     remarks: '',
     campus: '' as string,
-    visit: '' as string,
-    academic_program: '' as string,
-    academic_year: '' as string,
-    semester: '' as string,
     areaCriteria: [] as any[]
   });
 
@@ -43,10 +35,6 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
           proposedExhibits: area.proposedExhibits || '',
           remarks: area.remarks || '',
           campus: area.campus?.id?.toString() || '',
-          visit: area.visit?.id?.toString() || '',
-          academic_program: area.academic_program?.id?.toString() || '',
-          academic_year: area.academic_year?.id?.toString() || '',
-          semester: area.semester?.id?.toString() || '',
           areaCriteria: area.areaCriteria?.map(c => ({ ...c })) || []
         });
       } else {
@@ -56,10 +44,6 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
           proposedExhibits: '',
           remarks: '',
           campus: '',
-          visit: '',
-          academic_program: '',
-          academic_year: '',
-          semester: '',
           areaCriteria: []
         });
       }
@@ -71,18 +55,10 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
     if (!token) return;
 
     try {
-      const [programsData, yearsData, campusesData, visitTypesData, semestersData] = await Promise.all([
-        api.getAcademicPrograms(token),
-        api.getAcademicYears(token),
-        api.getCampuses(token).catch(() => []),
-        api.getVisitTypes(token).catch(() => []),
-        api.getSemesters(token).catch(() => [])
+      const [campusesData] = await Promise.all([
+        api.getCampuses(token).catch(() => [])
       ]);
-      setPrograms(programsData);
-      setYears(yearsData);
       setCampuses(campusesData);
-      setVisitTypes(visitTypesData);
-      setSemesters(semestersData);
     } catch (err: any) {
       console.error('Failed to fetch options:', err);
     }
@@ -119,10 +95,6 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
         proposedExhibits: formData.proposedExhibits,
         remarks: formData.remarks,
         campus: formData.campus ? Number(formData.campus) : null,
-        visit: formData.visit ? Number(formData.visit) : null,
-        academic_program: formData.academic_program ? Number(formData.academic_program) : null,
-        academic_year: formData.academic_year ? Number(formData.academic_year) : null,
-        semester: formData.semester ? Number(formData.semester) : null,
         areaCriteria: formData.areaCriteria.map(c => {
           const { documentId: _cDocId, id: cId, ...restC } = c;
           return {
@@ -362,76 +334,19 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
                 />
               </div>
 
-              {/* Area-level scope: Campus, Visit Type, Program, Year, Semester */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest px-1">Campus</label>
-                  <select
-                    value={formData.campus}
-                    onChange={(e) => setFormData({ ...formData, campus: e.target.value })}
-                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm appearance-none"
-                  >
-                    <option value="">No Campus</option>
-                    {campuses.map((c: any) => (
-                      <option key={c.id} value={c.id}>{c.campusDesc}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest px-1">Visit Type</label>
-                  <select
-                    value={formData.visit}
-                    onChange={(e) => setFormData({ ...formData, visit: e.target.value })}
-                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm appearance-none"
-                  >
-                    <option value="">No Visit Type</option>
-                    {visitTypes.map((v: any) => (
-                      <option key={v.id} value={v.id}>{v.visitType}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest px-1">Program</label>
-                  <select
-                    value={formData.academic_program}
-                    onChange={(e) => setFormData({ ...formData, academic_program: e.target.value })}
-                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm appearance-none"
-                  >
-                    <option value="">No Program</option>
-                    {programs.map(p => (
-                      <option key={p.id} value={p.id}>{p.programCode || p.attributes?.programCode}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest px-1">Academic Year</label>
-                  <select
-                    value={formData.academic_year}
-                    onChange={(e) => setFormData({ ...formData, academic_year: e.target.value })}
-                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm appearance-none"
-                  >
-                    <option value="">No Year</option>
-                    {years.map(y => (
-                      <option key={y.id} value={y.id}>{y.schoolyear || y.attributes?.schoolyear}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest px-1">Semester</label>
-                  <select
-                    value={formData.semester}
-                    onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
-                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm appearance-none"
-                  >
-                    <option value="">No Semester</option>
-                    {semesters.map(s => (
-                      <option key={s.id} value={s.id}>{s.semCode}</option>
-                    ))}
-                  </select>
-                </div>
+              {/* Area-level scope: Campus */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest px-1">Campus</label>
+                <select
+                  value={formData.campus}
+                  onChange={(e) => setFormData({ ...formData, campus: e.target.value })}
+                  className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm appearance-none"
+                >
+                  <option value="">No Campus</option>
+                  {campuses.map((c: any) => (
+                    <option key={c.id} value={c.id}>{c.campusDesc}</option>
+                  ))}
+                </select>
               </div>
 
             </div>

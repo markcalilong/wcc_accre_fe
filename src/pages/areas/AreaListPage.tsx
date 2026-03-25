@@ -62,12 +62,9 @@ export default function AreaListPage() {
     const searchLower = searchQuery.toLowerCase();
     const areaName = (area.area || '').toLowerCase();
     const areaDesc = (area.areaDesc || '').toLowerCase();
-    const programCode = (area.academic_program?.programCode || '').toLowerCase();
-    const yearStr = (area.academic_year?.schoolyear || '').toLowerCase();
-    const semStr = (area.semester?.semCode || '').toLowerCase();
     const campusStr = (area.campus?.campusDesc || '').toLowerCase();
 
-    return areaName.includes(searchLower) || areaDesc.includes(searchLower) || programCode.includes(searchLower) || yearStr.includes(searchLower) || semStr.includes(searchLower) || campusStr.includes(searchLower);
+    return areaName.includes(searchLower) || areaDesc.includes(searchLower) || campusStr.includes(searchLower);
   }).sort(sortAreasByNumber);
 
   return (

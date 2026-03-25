@@ -56,7 +56,19 @@
       "Bash(curl -s http://localhost:1337/)",
       "Bash(curl -v http://localhost:1337/)",
       "Bash(python -c \":*)",
-      "Bash(curl -s -X POST https://wcc-accre.onrender.com/admin/login -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"admin@gmail.com\"\",\"\"password\"\":\"\"Admin123\"\"}')"
+      "Bash(curl -s -X POST https://wcc-accre.onrender.com/admin/login -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"admin@gmail.com\"\",\"\"password\"\":\"\"Admin123\"\"}')",
+      "Bash(curl -s \"https://wcc-accre-bedev.onrender.com/api/areas?populate=*&pagination[pageSize]=1\")",
+      "Bash(python -c \"import sys,json; sys.stdout.reconfigure\\(encoding=''''utf-8''''\\); d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\(''''data'''',[{}]\\)[0] if d.get\\(''''data''''\\) else d, indent=2\\)\\)\")",
+      "Bash(curl -v \"https://wcc-accre-bedev.onrender.com/api/areas\")",
+      "Bash(curl -s \"https://wcc-accre-bedev.onrender.com/api/areas?populate=*&pagination[pageSize]=1\" -o C:UsersUserDownloadswcc_accre_fetemp_area.json)",
+      "WebFetch(domain:wcc-accre-bedev.onrender.com)",
+      "Bash(curl -s -X POST \"https://wcc-accre-bedev.onrender.com/admin/login\" -H \"Content-Type: application/json\" -d \"{\"\"email\"\":\"\"admin@gmail.com\"\",\"\"password\"\":\"\"Admin123\"\"}\")",
+      "Bash(curl -s -X POST \"https://wcc-accre.onrender.com/api/auth/local\" -H \"Content-Type: application/json\" -d '{\"\"\"\"identifier\"\"\"\":\"\"\"\"admin@gmail.com\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"Admin123\"\"\"\"}')",
+      "Bash(curl -s -X POST \"https://wcc-accre.onrender.com/admin/login\" -H \"Content-Type: application/json\" -d '{\"\"\"\"email\"\"\"\":\"\"\"\"admin@gmail.com\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"Admin123\"\"\"\"}')",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxIiwic2Vzc2lvbklkIjoiYWMyMjk2ZmI1ZTk3OGM5MTQwZjBlNzYzZTY5NTk1ZTUiLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzc0NDE2NDkyLCJleHAiOjE3NzQ0MTgyOTJ9.1JzrrMO5I6vvgVeBSqETXvIK_xA-PRv3FW62rYX3Qf4\" curl -s \"https://wcc-accre.onrender.com/content-manager/collection-types/api::area.area?page=1&pageSize=100&populate[areaCriteria][populate][subcriteria]=true\" -H \"Authorization: Bearer $TOKEN\")",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxIiwic2Vzc2lvbklkIjoiYWMyMjk2ZmI1ZTk3OGM5MTQwZjBlNzYzZTY5NTk1ZTUiLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzc0NDE2NDkyLCJleHAiOjE3NzQ0MTgyOTJ9.1JzrrMO5I6vvgVeBSqETXvIK_xA-PRv3FW62rYX3Qf4\" curl -s \"https://wcc-accre.onrender.com/content-manager/collection-types/api::area.area?page=1&pageSize=100\" -H \"Authorization: Bearer $TOKEN\")",
+      "Bash(node backup_script.js)",
+      "Bash(node backup_script.cjs)"
     ]
   }
 }

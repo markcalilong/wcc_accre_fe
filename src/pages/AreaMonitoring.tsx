@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { Area, AreaCriteria, FileUploadMetadata } from '../types/area';
-import { Loader2, AlertCircle, RefreshCw, FileCheck, Clock, CheckCircle2, ChevronDown, ChevronUp, ExternalLink, GraduationCap, Calendar, MapPin, BookOpen } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, FileCheck, Clock, CheckCircle2, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { hasManagementAccess, getUserPersonelRole } from '../utils/roles';
 import { sortAreasByNumber } from '../utils/sorting';
 
@@ -28,7 +28,7 @@ function StatusBadge({ status }: { status: 'none' | 'uploaded' | 'reviewed' | 'a
   }
 }
 
-function AreaSection({ area, onNavigate }: { key?: any; area: Area; onNavigate: (id: string) => void }) {
+function AreaSection({ area, filterUploads, onNavigate }: { key?: any; area: Area; filterUploads: (uploads: FileUploadMetadata[]) => FileUploadMetadata[]; onNavigate: (id: string) => void }) {
   const [expanded, setExpanded] = useState(true);
 
   return (
@@ -45,21 +45,6 @@ function AreaSection({ area, onNavigate }: { key?: any; area: Area; onNavigate: 
               <span className="text-[10px] font-bold text-zinc-400 bg-zinc-50 px-2 py-0.5 rounded-full border border-zinc-100 uppercase tracking-wider">
                 {area.areaCriteria.length} criteria
               </span>
-              {area.academic_program?.programCode && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">
-                  <GraduationCap className="w-3 h-3" /> {area.academic_program.programCode}
-                </span>
-              )}
-              {area.semester?.semCode && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded-full border border-cyan-100">
-                  {area.semester.semCode}
-                </span>
-              )}
-              {area.visit?.visitType && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-100">
-                  {area.visit.visitType}
-                </span>
-              )}
             </div>
           </div>
           <div className="p-2 text-zinc-400">
@@ -82,7 +67,15 @@ function AreaSection({ area, onNavigate }: { key?: any; area: Area; onNavigate: 
           ) : (
             <div className="divide-y divide-zinc-50">
               {area.areaCriteria.map((criteria) => (
-                <CriteriaRow key={criteria.id} criteria={criteria} />
+                <CriteriaRow
+                  key={criteria.id}
+                  criteria={criteria}
+                  filteredCriteriaUploads={filterUploads(criteria.criteriaUploads || [])}
+                  filteredSubCriteriaUploads={(subId: number) => {
+                    const sub = criteria.subcriteria.find(s => s.id === subId);
+                    return filterUploads(sub?.subCriteriaUploads || []);
+                  }}
+                />
               ))}
             </div>
           )}
@@ -92,8 +85,13 @@ function AreaSection({ area, onNavigate }: { key?: any; area: Area; onNavigate: 
   );
 }
 
-function CriteriaRow({ criteria }: { key?: any; criteria: AreaCriteria }) {
-  const status = getUploadStatus(criteria.criteriaUploads);
+function CriteriaRow({ criteria, filteredCriteriaUploads, filteredSubCriteriaUploads }: {
+  key?: any;
+  criteria: AreaCriteria;
+  filteredCriteriaUploads: FileUploadMetadata[];
+  filteredSubCriteriaUploads: (subId: number) => FileUploadMetadata[];
+}) {
+  const status = getUploadStatus(filteredCriteriaUploads);
 
   return (
     <div>
@@ -110,7 +108,7 @@ function CriteriaRow({ criteria }: { key?: any; criteria: AreaCriteria }) {
       {criteria.subcriteria.length > 0 && (
         <div className="bg-zinc-50/30">
           {criteria.subcriteria.map((sub) => {
-            const subStatus = getUploadStatus(sub.subCriteriaUploads);
+            const subStatus = getUploadStatus(filteredSubCriteriaUploads(sub.id));
             return (
               <div key={sub.id} className="flex items-center justify-between px-6 py-3 pl-16 border-t border-zinc-50">
                 <div className="flex-1 min-w-0 pr-4">
@@ -135,11 +133,15 @@ export default function AreaMonitoring() {
   const [programs, setPrograms] = useState<any[]>([]);
   const [years, setYears] = useState<any[]>([]);
   const [semesters, setSemesters] = useState<any[]>([]);
+  const [visitTypes, setVisitTypes] = useState<any[]>([]);
+  const [campuses, setCampuses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedProgram, setSelectedProgram] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedSemester, setSelectedSemester] = useState<string>('');
+  const [selectedVisit, setSelectedVisit] = useState<string>('');
+  const [selectedCampus, setSelectedCampus] = useState<string>('');
   const [userData, setUserData] = useState<any>(null);
 
   const fetchData = useCallback(async () => {
@@ -149,17 +151,21 @@ export default function AreaMonitoring() {
     setLoading(true);
     setError(null);
     try {
-      const [areasData, programsResult, yearsResult, semestersResult, userResult] = await Promise.all([
+      const [areasData, programsResult, yearsResult, semestersResult, visitTypesResult, campusesResult, userResult] = await Promise.all([
         api.getAreas(token),
         api.getAcademicPrograms().catch(() => []),
         api.getAcademicYears(token).catch(() => []),
         api.getSemesters(token).catch(() => []),
+        api.getVisitTypes(token).catch(() => []),
+        api.getCampuses(token).catch(() => []),
         api.getMe(token).catch(() => null),
       ]);
       setAreas(areasData);
       setPrograms(programsResult);
       setYears(yearsResult);
       setSemesters(semestersResult);
+      setVisitTypes(visitTypesResult);
+      setCampuses(campusesResult);
       setUserData(userResult);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch areas');
@@ -171,6 +177,30 @@ export default function AreaMonitoring() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Auto-set program and campus filters based on user profile (non-admin only)
+  useEffect(() => {
+    if (!userData) return;
+    const role = getUserPersonelRole(userData);
+    if (hasManagementAccess(role)) return; // admin sees all
+
+    // Auto-set program
+    const userProg = typeof userData.academic_program === 'string'
+      ? userData.academic_program
+      : userData.academic_program?.programCode;
+    if (userProg && programs.length > 0 && !selectedProgram) {
+      const match = programs.find((p: any) =>
+        (p.programCode || '').toLowerCase() === userProg.toLowerCase()
+      );
+      if (match) setSelectedProgram(String(match.id));
+    }
+
+    // Auto-set campus (use first campus from user's campuses)
+    const userCampuses = userData.campuses || [];
+    if (userCampuses.length > 0 && campuses.length > 0 && !selectedCampus) {
+      setSelectedCampus(String(userCampuses[0].id));
+    }
+  }, [userData, programs, campuses, selectedProgram, selectedCampus]);
 
   const personelRoleName = useMemo(() => {
     if (!userData) return '';
@@ -190,56 +220,36 @@ export default function AreaMonitoring() {
     return (userData?.campuses || []).map((c: any) => c.id) as number[];
   }, [userData]);
 
-  // Get user's program codes for filtering
-  const userProgramCodes = useMemo(() => {
-    const codes: string[] = [];
-    const roleCoveredPrograms = userData?.personel_role?.coveredPrograms || [];
-    for (const cp of roleCoveredPrograms) {
-      const code = cp.academic_program?.programCode;
-      if (code && !codes.includes(code.toLowerCase().trim())) {
-        codes.push(code.toLowerCase().trim());
-      }
-    }
-    const userOwnProgram = typeof userData?.academic_program === 'string'
-      ? userData.academic_program
-      : userData?.academic_program?.programCode;
-    if (userOwnProgram && userOwnProgram.trim() && !codes.includes(userOwnProgram.toLowerCase().trim())) {
-      codes.push(userOwnProgram.toLowerCase().trim());
-    }
-    return codes;
-  }, [userData]);
-
-  // Filter areas at the area level (program, year, semester are now area-level fields)
+  // Areas are universal (visible to all campuses/programs).
+  // Only filter by coveredAreas from personel_role (which areas the user is assigned to).
+  // Campus filtering happens at the upload level, not the area level.
   const filteredAreas = useMemo(() => {
     return areas.filter(area => {
-      // Dropdown filters at area level
-      if (selectedProgram && String(area.academic_program?.id) !== selectedProgram) return false;
-      if (selectedYear && String(area.academic_year?.id) !== selectedYear) return false;
-      if (selectedSemester && String(area.semester?.id) !== selectedSemester) return false;
-
       if (!isAdmin) {
-        // Filter by user's campus
-        if (userCampusIds.length > 0 && area.campus?.id) {
-          if (!userCampusIds.includes(area.campus.id)) return false;
-        }
-
         // Filter by coveredAreas from personel_role
         if (userCoveredAreas.length > 0) {
           const areaNameLower = area.area.toLowerCase().trim();
           if (!userCoveredAreas.includes(areaNameLower)) return false;
         }
-
-        // Filter by user's program
-        if (userProgramCodes.length > 0 && area.academic_program?.programCode) {
-          if (!userProgramCodes.includes(area.academic_program.programCode.toLowerCase().trim())) return false;
-        }
       }
 
       return true;
     }).sort(sortAreasByNumber);
-  }, [areas, selectedProgram, selectedYear, selectedSemester, isAdmin, userCoveredAreas, userProgramCodes, userCampusIds]);
+  }, [areas, isAdmin, userCoveredAreas]);
 
-  // Count uploads from filtered areas
+  // Filter uploads based on dropdown selections
+  const filterUploads = useCallback((uploads: FileUploadMetadata[]) => {
+    return uploads.filter(u => {
+      if (selectedProgram && String(u.academic_program?.id) !== selectedProgram) return false;
+      if (selectedYear && String(u.academic_year?.id) !== selectedYear) return false;
+      if (selectedSemester && String(u.semester?.id) !== selectedSemester) return false;
+      if (selectedVisit && String(u.visit?.id) !== selectedVisit) return false;
+      if (selectedCampus && String(u.campus?.id) !== selectedCampus) return false;
+      return true;
+    });
+  }, [selectedProgram, selectedYear, selectedSemester, selectedVisit, selectedCampus]);
+
+  // Count uploads from filtered areas, applying upload-level filters
   const counts = useMemo(() => {
     let uploaded = 0;
     let reviewed = 0;
@@ -247,13 +257,13 @@ export default function AreaMonitoring() {
 
     filteredAreas.forEach(area => {
       area.areaCriteria.forEach(criteria => {
-        criteria.criteriaUploads?.forEach(u => {
+        filterUploads(criteria.criteriaUploads || []).forEach(u => {
           if (u.fileStatus === 'Approved') approved++;
           else if (u.fileStatus === 'Reviewed') reviewed++;
           else uploaded++;
         });
         criteria.subcriteria?.forEach(sub => {
-          sub.subCriteriaUploads?.forEach(u => {
+          filterUploads(sub.subCriteriaUploads || []).forEach(u => {
             if (u.fileStatus === 'Approved') approved++;
             else if (u.fileStatus === 'Reviewed') reviewed++;
             else uploaded++;
@@ -263,7 +273,7 @@ export default function AreaMonitoring() {
     });
 
     return { uploaded, reviewed, approved };
-  }, [filteredAreas]);
+  }, [filteredAreas, filterUploads]);
 
   if (loading) {
     return (
@@ -305,24 +315,42 @@ export default function AreaMonitoring() {
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex-1">
-          <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Academic Program</label>
-          <select
-            value={selectedProgram}
-            onChange={(e) => setSelectedProgram(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-zinc-200 bg-white text-sm font-medium text-zinc-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none appearance-none"
-          >
-            <option value="">All Programs</option>
-            {programs.map((p: any) => (
-              <option key={p.id} value={String(p.id)}>
-                {p.programCode || p.attributes?.programCode}{p.programDesc ? ` - ${p.programDesc}` : p.attributes?.programDesc ? ` - ${p.attributes.programDesc}` : ''}
-              </option>
-            ))}
-          </select>
+      {/* User context info (non-admin) */}
+      {!isAdmin && userData && (
+        <div className="flex flex-wrap items-center gap-3">
+          {userData.academic_program && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-100 text-xs font-bold text-indigo-700 uppercase tracking-wider">
+              {userData.academic_program.programCode || userData.academic_program}
+            </span>
+          )}
+          {userData.campuses?.[0] && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-50 border border-violet-100 text-xs font-bold text-violet-700 uppercase tracking-wider">
+              {userData.campuses[0].campusDesc || userData.campuses[0].campusName || 'Campus'}
+            </span>
+          )}
         </div>
-        <div className="flex-1">
+      )}
+
+      {/* Filters */}
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${isAdmin ? 'lg:grid-cols-5' : 'lg:grid-cols-3'} gap-4`}>
+        {isAdmin && (
+          <div>
+            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Academic Program</label>
+            <select
+              value={selectedProgram}
+              onChange={(e) => setSelectedProgram(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-zinc-200 bg-white text-sm font-medium text-zinc-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none appearance-none"
+            >
+              <option value="">All Programs</option>
+              {programs.map((p: any) => (
+                <option key={p.id} value={String(p.id)}>
+                  {p.programCode || p.attributes?.programCode}{p.programDesc ? ` - ${p.programDesc}` : p.attributes?.programDesc ? ` - ${p.attributes.programDesc}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        <div>
           <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Academic Year</label>
           <select
             value={selectedYear}
@@ -337,7 +365,7 @@ export default function AreaMonitoring() {
             ))}
           </select>
         </div>
-        <div className="flex-1">
+        <div>
           <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Semester</label>
           <select
             value={selectedSemester}
@@ -352,6 +380,38 @@ export default function AreaMonitoring() {
             ))}
           </select>
         </div>
+        <div>
+          <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Visit Type</label>
+          <select
+            value={selectedVisit}
+            onChange={(e) => setSelectedVisit(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl border border-zinc-200 bg-white text-sm font-medium text-zinc-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none appearance-none"
+          >
+            <option value="">All Visit Types</option>
+            {visitTypes.map((v: any) => (
+              <option key={v.id} value={String(v.id)}>
+                {v.visitType || v.attributes?.visitType}
+              </option>
+            ))}
+          </select>
+        </div>
+        {isAdmin && (
+          <div>
+            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Campus</label>
+            <select
+              value={selectedCampus}
+              onChange={(e) => setSelectedCampus(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-zinc-200 bg-white text-sm font-medium text-zinc-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none appearance-none"
+            >
+              <option value="">All Campuses</option>
+              {campuses.map((c: any) => (
+                <option key={c.id} value={String(c.id)}>
+                  {c.campusName || c.attributes?.campusName}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Summary Cards */}
@@ -397,7 +457,7 @@ export default function AreaMonitoring() {
             <p className="text-zinc-400 italic">No areas found.</p>
           </div>
         ) : (
-          filteredAreas.map((area) => <AreaSection key={area.id} area={area} onNavigate={(id) => navigate(`/dashboard/areas/${id}`)} />)
+          filteredAreas.map((area) => <AreaSection key={area.id} area={area} filterUploads={filterUploads} onNavigate={(id) => navigate(`/dashboard/areas/${id}`)} />)
         )}
       </div>
     </div>

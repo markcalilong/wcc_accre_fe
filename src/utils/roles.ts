@@ -111,7 +111,13 @@ export function canUploadToCriteria(user: any, areaName: string, criteriaCode: s
   if (!allowed || allowed.trim() === '') return true;
 
   // Check if the criteria code is in the allowed list
-  const allowedCodes = allowed.split(',').map((c: string) => c.trim().toLowerCase());
+  // Handles both plain codes ("B.1") and legacy program-qualified codes ("BSIT:B.1")
+  const allowedCodes = allowed.split(',').map((c: string) => {
+    const trimmed = c.trim().toLowerCase();
+    // Strip program prefix if present (e.g., "bsit:b.1" -> "b.1")
+    const colonIdx = trimmed.indexOf(':');
+    return colonIdx >= 0 ? trimmed.substring(colonIdx + 1) : trimmed;
+  });
   return allowedCodes.includes(criteriaCode.toLowerCase().trim());
 }
 
