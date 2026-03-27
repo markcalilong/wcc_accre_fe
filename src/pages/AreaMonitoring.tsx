@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { Area, AreaCriteria, FileUploadMetadata } from '../types/area';
 import { Loader2, AlertCircle, RefreshCw, FileCheck, Clock, CheckCircle2, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
-import { hasManagementAccess, getUserPersonelRole, isDeanRole } from '../utils/roles';
+import { hasManagementAccess, getUserPersonelRole, isDeanRole, isViewer } from '../utils/roles';
 import { sortAreasByNumber } from '../utils/sorting';
 
 function getUploadStatus(uploads: FileUploadMetadata[]): 'none' | 'uploaded' | 'reviewed' | 'approved' {
@@ -178,11 +178,11 @@ export default function AreaMonitoring() {
     fetchData();
   }, [fetchData]);
 
-  // Auto-set program and campus filters based on user profile (non-admin only)
+  // Auto-set program and campus filters based on user profile (non-admin/non-viewer only)
   useEffect(() => {
     if (!userData) return;
     const role = getUserPersonelRole(userData);
-    if (hasManagementAccess(role)) return; // admin sees all
+    if (hasManagementAccess(role) || isViewer(role)) return; // admin & viewers see all
 
     // Auto-set program
     const userProg = typeof userData.academic_program === 'string'
@@ -209,8 +209,9 @@ export default function AreaMonitoring() {
 
   const isAdmin = useMemo(() => hasManagementAccess(personelRoleName), [personelRoleName]);
   const isDean = useMemo(() => isDeanRole(personelRoleName), [personelRoleName]);
-  const showProgramFilter = isAdmin || isDean;
-  const showCampusFilter = isAdmin;
+  const isViewerRole = useMemo(() => isViewer(personelRoleName), [personelRoleName]);
+  const showProgramFilter = isAdmin || isDean || isViewerRole;
+  const showCampusFilter = isAdmin || isViewerRole;
 
   const userCoveredAreas = useMemo(() => {
     return userData?.personel_role?.coveredAreas?.map(
@@ -228,7 +229,7 @@ export default function AreaMonitoring() {
   // Campus filtering happens at the upload level, not the area level.
   const filteredAreas = useMemo(() => {
     return areas.filter(area => {
-      if (!isAdmin) {
+      if (!isAdmin && !isViewerRole) {
         // Filter by coveredAreas from personel_role
         if (userCoveredAreas.length > 0) {
           const areaNameLower = area.area.toLowerCase().trim();
@@ -318,8 +319,8 @@ export default function AreaMonitoring() {
         </button>
       </div>
 
-      {/* User context info (non-admin) */}
-      {!isAdmin && userData && (
+      {/* User context info (non-admin, non-viewer) */}
+      {!isAdmin && !isViewerRole && userData && (
         <div className="flex flex-wrap items-center gap-3">
           {userData.academic_program && (
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-100 text-xs font-bold text-indigo-700 uppercase tracking-wider">
@@ -335,7 +336,7 @@ export default function AreaMonitoring() {
       )}
 
       {/* Filters */}
-      <div className={`grid grid-cols-1 sm:grid-cols-2 ${isAdmin ? 'lg:grid-cols-5' : showProgramFilter ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${showCampusFilter ? 'lg:grid-cols-5' : showProgramFilter ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
         {showProgramFilter && (
           <div>
             <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Academic Program</label>

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { Loader2, LogOut, LayoutDashboard, FileText, Users, GraduationCap, BarChart3, Layers, ChevronDown, ChevronRight, FolderOpen, Shield, ClipboardCheck, Building2, Calendar, BookOpen, ClipboardList } from 'lucide-react';
-import { hasManagementAccess, getUserPersonelRole, isDeanRole } from '../utils/roles';
+import { hasManagementAccess, getUserPersonelRole, isDeanRole, isViewer } from '../utils/roles';
 import { sortAreasByNumber } from '../utils/sorting';
 
 interface UserData {
@@ -74,22 +74,31 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return isDeanRole(personelRoleName);
   }, [personelRoleName]);
 
-  // Everyone with a personel_role sees the Tasks section
-  const canSeeTasksSection = useMemo(() => {
-    return !!personelRoleName && personelRoleName.toLowerCase() !== 'unknown';
+  const isViewerRole = useMemo(() => {
+    return isViewer(personelRoleName);
   }, [personelRoleName]);
+
+  // Viewers don't see Tasks section — they can only view and consolidate
+  const canSeeTasksSection = useMemo(() => {
+    if (isViewerRole) return false;
+    return !!personelRoleName && personelRoleName.toLowerCase() !== 'unknown';
+  }, [personelRoleName, isViewerRole]);
 
   // Dean-visible management items (scoped to their program)
   // Deans can also manage faculty users within their program
   const DEAN_MANAGEMENT_IDS = ['area', 'area-monitoring', 'consolidate', 'users'];
 
+  // Viewer-visible management items (view + consolidate only)
+  const VIEWER_MANAGEMENT_IDS = ['area-monitoring', 'consolidate'];
+
   const filteredManagementItems = useMemo(() => {
     if (!userData) return [];
     if (isAdmin) return MANAGEMENT_ITEMS;
     if (isDean) return MANAGEMENT_ITEMS.filter(item => DEAN_MANAGEMENT_IDS.includes(item.id));
+    if (isViewerRole) return MANAGEMENT_ITEMS.filter(item => VIEWER_MANAGEMENT_IDS.includes(item.id));
     // Non-admin/non-dean roles only see Area Monitoring
     return MANAGEMENT_ITEMS.filter(item => item.id === 'area-monitoring');
-  }, [userData, isAdmin, isDean]);
+  }, [userData, isAdmin, isDean, isViewerRole]);
 
   // Get user's campus IDs for filtering
   const userCampusIds = useMemo(() => {
@@ -99,7 +108,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // Filter sidebar areas based on user's coveredAreas and campus
   const filteredAreas = useMemo(() => {
     if (!userData) return areas;
-    if (isAdmin) return areas;
+    if (isAdmin || isViewerRole) return areas;
 
     // Campus filter helper — if user has campuses, area must match one
     const passesCampusFilter = (area: AreaItem) => {
