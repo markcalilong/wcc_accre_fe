@@ -4,7 +4,7 @@ import { PDFDocument } from 'pdf-lib';
 import { api } from '../services/api';
 import { Area, FileUploadMetadata } from '../types/area';
 import { sortAreasByNumber } from '../utils/sorting';
-import { hasManagementAccess, getUserPersonelRole, isDeanRole } from '../utils/roles';
+import { hasManagementAccess, getUserPersonelRole, isDeanRole, isViewer } from '../utils/roles';
 
 interface FlatFile {
   areaName: string;
@@ -125,8 +125,9 @@ export default function ConsolidateFiles() {
   const userRole = userData ? getUserPersonelRole(userData) : '';
   const isAdmin = hasManagementAccess(userRole);
   const isDean = isDeanRole(userRole);
-  const showProgramFilter = isAdmin || isDean;
-  const showCampusFilter = isAdmin;
+  const isViewerRole = isViewer(userRole);
+  const showProgramFilter = isAdmin || isDean || isViewerRole;
+  const showCampusFilter = isAdmin || isViewerRole;
 
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem('jwt');
@@ -159,10 +160,11 @@ export default function ConsolidateFiles() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Auto-set program and campus for non-admin users
+  // Auto-set program and campus for non-admin/non-viewer users
   useEffect(() => {
     if (!userData) return;
-    if (hasManagementAccess(getUserPersonelRole(userData))) return;
+    const role = getUserPersonelRole(userData);
+    if (hasManagementAccess(role) || isViewer(role)) return;
 
     const userProg = typeof userData.academic_program === 'string'
       ? userData.academic_program
@@ -411,8 +413,8 @@ export default function ConsolidateFiles() {
         </button>
       </div>
 
-      {/* User context info (non-admin) */}
-      {!isAdmin && userData && (
+      {/* User context info (non-admin, non-viewer) */}
+      {!isAdmin && !isViewerRole && userData && (
         <div className="flex flex-wrap items-center gap-3">
           {userData.academic_program && (
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-100 text-xs font-bold text-indigo-700 uppercase tracking-wider">

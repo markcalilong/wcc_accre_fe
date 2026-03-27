@@ -4,7 +4,7 @@ import { ArrowLeft, Loader2, AlertCircle, RefreshCw, Layers, FileText } from 'lu
 import { api } from '../../services/api';
 import { Area, AreaCriteria, FileUploadMetadata } from '../../types/area';
 import CriteriaCard from '../../components/areas/CriteriaCard';
-import { getUserPersonelRole, canUploadToCriteria, hasManagementAccess, isDeanRole } from '../../utils/roles';
+import { getUserPersonelRole, canUploadToCriteria, hasManagementAccess, isDeanRole, isViewer } from '../../utils/roles';
 
 export default function AreaDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -74,13 +74,14 @@ export default function AreaDetailPage() {
 
   const isAdmin = hasManagementAccess(userRole);
   const isDean = isDeanRole(userRole);
-  const showProgramFilter = isAdmin || isDean;
-  const showCampusFilter = isAdmin;
+  const isViewerRole = isViewer(userRole);
+  const showProgramFilter = isAdmin || isDean || isViewerRole;
+  const showCampusFilter = isAdmin || isViewerRole;
 
-  // Auto-set program and campus filters based on user profile (non-admin only)
+  // Auto-set program and campus filters based on user profile (non-admin/non-viewer only)
   useEffect(() => {
     if (!userData || !userRole) return;
-    if (hasManagementAccess(userRole)) return;
+    if (hasManagementAccess(userRole) || isViewer(userRole)) return;
 
     // Auto-set program
     const userProg = typeof userData.academic_program === 'string'
@@ -408,8 +409,8 @@ export default function AreaDetailPage() {
         </div>
       </div>
 
-      {/* User context info (non-admin) */}
-      {!isAdmin && userData && (
+      {/* User context info (non-admin, non-viewer) */}
+      {!isAdmin && !isViewerRole && userData && (
         <div className="flex flex-wrap items-center gap-3">
           {userData.academic_program && (
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-100 text-xs font-bold text-indigo-700 uppercase tracking-wider">
@@ -507,7 +508,7 @@ export default function AreaDetailPage() {
         </div>
       </div>
 
-      {!canUploadNow && missingFilters.length > 0 && (
+      {!isViewerRole && !canUploadNow && missingFilters.length > 0 && (
         <div className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-amber-50 border border-amber-100">
           <AlertCircle className="w-5 h-5 text-amber-500 shrink-0" />
           <p className="text-sm text-amber-700">

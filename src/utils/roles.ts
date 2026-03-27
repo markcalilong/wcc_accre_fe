@@ -4,7 +4,8 @@
 // Full Control: Authenticated (system admin) — manages everything
 // Approvers: Dean (program-scoped), Librarian, DSA, Physical Plant
 // Reviewers: Program Head, Area Coordinator
-// Uploaders: Faculty, Admin Staff, Library Staff, Public (everyone can upload)
+// Uploaders: Faculty, Admin Staff, Library Staff
+// Viewers: Visitor, Accreditor — can only view areas and consolidate PDFs
 
 const APPROVER_ROLES = [
   'dean',
@@ -23,6 +24,13 @@ const UPLOADER_ROLES = [
   'faculty',
   'admin staff',
   'library staff',
+];
+
+// View-only roles: can browse areas and consolidate files, but cannot upload/review/approve
+const VIEWER_ROLES = [
+  'viewer',
+  'visitor',
+  'accreditor',
 ];
 
 // Full management access (sidebar: all management pages, sees all areas/programs)
@@ -50,8 +58,14 @@ export function isReviewer(role: string): boolean {
   return REVIEWER_ROLES.includes(r) || APPROVER_ROLES.includes(r); // Approvers can also review
 }
 
-export function isUploader(_role: string): boolean {
-  // Everyone can upload
+export function isViewer(role: string): boolean {
+  const r = normalizeRole(role);
+  return VIEWER_ROLES.includes(r);
+}
+
+export function isUploader(role: string): boolean {
+  // Viewers cannot upload
+  if (isViewer(role)) return false;
   return true;
 }
 
@@ -94,6 +108,9 @@ export function getAvailableStatuses(role: string): string[] {
 export function canUploadToCriteria(user: any, areaName: string, criteriaCode: string): boolean {
   const role = getUserPersonelRole(user);
   const r = normalizeRole(role);
+
+  // Viewers cannot upload
+  if (VIEWER_ROLES.includes(r)) return false;
 
   // Management roles can upload to everything
   if (MANAGEMENT_ROLES.includes(r)) return true;
