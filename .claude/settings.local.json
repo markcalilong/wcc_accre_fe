@@ -68,7 +68,16 @@
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxIiwic2Vzc2lvbklkIjoiYWMyMjk2ZmI1ZTk3OGM5MTQwZjBlNzYzZTY5NTk1ZTUiLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzc0NDE2NDkyLCJleHAiOjE3NzQ0MTgyOTJ9.1JzrrMO5I6vvgVeBSqETXvIK_xA-PRv3FW62rYX3Qf4\" curl -s \"https://wcc-accre.onrender.com/content-manager/collection-types/api::area.area?page=1&pageSize=100&populate[areaCriteria][populate][subcriteria]=true\" -H \"Authorization: Bearer $TOKEN\")",
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxIiwic2Vzc2lvbklkIjoiYWMyMjk2ZmI1ZTk3OGM5MTQwZjBlNzYzZTY5NTk1ZTUiLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzc0NDE2NDkyLCJleHAiOjE3NzQ0MTgyOTJ9.1JzrrMO5I6vvgVeBSqETXvIK_xA-PRv3FW62rYX3Qf4\" curl -s \"https://wcc-accre.onrender.com/content-manager/collection-types/api::area.area?page=1&pageSize=100\" -H \"Authorization: Bearer $TOKEN\")",
       "Bash(node backup_script.js)",
-      "Bash(node backup_script.cjs)"
+      "Bash(node backup_script.cjs)",
+      "WebFetch(domain:doi.org)",
+      "WebFetch(domain:www.mdpi.com)",
+      "WebFetch(domain:davaoresearchjournal.ph)",
+      "WebFetch(domain:linkinghub.elsevier.com)",
+      "WebFetch(domain:ijssrr.com)",
+      "WebFetch(domain:www.e-informatyka.pl)",
+      "WebSearch",
+      "WebFetch(domain:dl.acm.org)",
+      "WebFetch(domain:www.frontiersin.org)"
     ]
   }
 }
