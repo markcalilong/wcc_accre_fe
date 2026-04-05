@@ -4,7 +4,7 @@ import { ArrowLeft, Loader2, AlertCircle, RefreshCw, Layers, FileText } from 'lu
 import { api } from '../../services/api';
 import { Area, AreaCriteria, FileUploadMetadata } from '../../types/area';
 import CriteriaCard from '../../components/areas/CriteriaCard';
-import { getUserPersonelRole, canUploadToCriteria, hasManagementAccess, isDeanRole, isViewer } from '../../utils/roles';
+import { getUserPersonelRole, canUploadToCriteria, hasManagementAccess, isDeanRole, isViewer, criteriaMatchesProgram } from '../../utils/roles';
 
 export default function AreaDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -78,6 +78,13 @@ export default function AreaDetailPage() {
   const showProgramFilter = isAdmin || isDean || isViewerRole;
   const showCampusFilter = isAdmin || isViewerRole;
 
+  // Resolve selected program ID to program code for criteria filtering
+  const selectedProgramCode = useMemo(() => {
+    if (!selectedProgram) return undefined;
+    const match = programs.find((p: any) => String(p.id) === selectedProgram);
+    return match?.programCode || undefined;
+  }, [selectedProgram, programs]);
+
   // Auto-set program and campus filters based on user profile (non-admin/non-viewer only)
   useEffect(() => {
     if (!userData || !userRole) return;
@@ -129,6 +136,7 @@ export default function AreaDetailPage() {
       ...(typeof c.id === 'number' ? { id: c.id } : {}),
       code: c.code,
       desc: c.desc,
+      programs: c.programs || null,
       criteriaUploads: c.criteriaUploads?.map((u: any) => {
         const fileData = Array.isArray(u.fileUpload) ? u.fileUpload[0] : u.fileUpload;
         const uploaderData = Array.isArray(u.uploader) ? u.uploader[0] : u.uploader;
@@ -524,17 +532,17 @@ export default function AreaDetailPage() {
             Area Criteria
           </h2>
           <span className="px-3 py-1 rounded-full bg-zinc-100 text-zinc-500 text-xs font-bold uppercase tracking-widest">
-            {area.areaCriteria.length} Criteria
+            {area.areaCriteria.filter(c => criteriaMatchesProgram(c.programs, selectedProgramCode)).length} Criteria
           </span>
         </div>
 
         <div className="grid grid-cols-1 gap-6">
-          {area.areaCriteria.length === 0 ? (
+          {area.areaCriteria.filter(c => criteriaMatchesProgram(c.programs, selectedProgramCode)).length === 0 ? (
             <div className="text-center py-20 bg-white rounded-3xl border border-zinc-100 border-dashed">
               <p className="text-zinc-400 italic">No criteria defined for this area.</p>
             </div>
           ) : (
-            area.areaCriteria.map((criteria) => (
+            area.areaCriteria.filter(c => criteriaMatchesProgram(c.programs, selectedProgramCode)).map((criteria) => (
               <CriteriaCard
                 key={criteria.id}
                 criteria={getFilteredCriteria(criteria)}

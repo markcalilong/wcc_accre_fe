@@ -6,7 +6,7 @@ import {
   Loader2, AlertCircle, RefreshCw, CheckCircle2, FileText, Clock, Eye, X, ExternalLink,
   ChevronDown, ChevronUp, User, Layers, Upload
 } from 'lucide-react';
-import { getUserPersonelRole, isApprover, isReviewer, hasManagementAccess, canUploadToCriteria } from '../utils/roles';
+import { getUserPersonelRole, isApprover, isReviewer, hasManagementAccess, canUploadToCriteria, criteriaMatchesProgram } from '../utils/roles';
 import { sortAreasByNumber } from '../utils/sorting';
 
 // A pending review/approve item (has an existing upload)
@@ -194,6 +194,9 @@ export default function PendingTasks() {
       const allowedEntries = allowedCriteriaByArea[areaNameLC];
 
       area.areaCriteria.forEach(criteria => {
+        // Filter by criteria's program tag (empty = universal, shown to all)
+        if (!criteriaMatchesProgram(criteria.programs, userProgramCode || undefined)) return;
+
         // Filter by allowedCriteria (if set)
         if (!isAdmin && allowedEntries && allowedEntries.length > 0) {
           const code = criteria.code.toLowerCase().trim();

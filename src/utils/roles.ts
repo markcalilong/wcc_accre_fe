@@ -149,6 +149,17 @@ export function getAllowedCriteria(user: any, areaName: string): string[] {
   return matchingArea.allowedCriteria.split(',').map((c: string) => c.trim()).filter(Boolean);
 }
 
+// Check if a criteria matches a given program code
+// Empty/null programs field = universal (matches all programs)
+export function criteriaMatchesProgram(criteriaPrograms: string | null | undefined, programCode: string | null | undefined): boolean {
+  // No programs set = universal criteria, visible to all
+  if (!criteriaPrograms || criteriaPrograms.trim() === '') return true;
+  // No program selected = show all criteria
+  if (!programCode) return true;
+  const codes = criteriaPrograms.split(',').map(c => c.trim().toLowerCase());
+  return codes.includes(programCode.toLowerCase().trim());
+}
+
 // Extract the personel_role name from user data
 // Falls back to Strapi built-in role if no personel_role assigned
 export function getUserPersonelRole(user: any): string {

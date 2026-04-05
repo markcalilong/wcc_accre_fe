@@ -73,7 +73,17 @@
       "Bash(node -e \"const c=[]; process.stdin.on\\(''''data'''',d=>c.push\\(d\\)\\); process.stdin.on\\(''''end'''',\\(\\)=>console.log\\(JSON.parse\\(Buffer.concat\\(c\\).toString\\(\\)\\).data.token\\)\\);\")",
       "Bash(node -e \"const c=[]; process.stdin.on\\(''''data'''',d=>c.push\\(d\\)\\); process.stdin.on\\(''''end'''',\\(\\)=>{try{console.log\\(JSON.parse\\(Buffer.concat\\(c\\).toString\\(\\)\\).data.token\\)}catch\\(e\\){console.log\\(''''ERROR'''',Buffer.concat\\(c\\).toString\\(\\).substring\\(0,200\\)\\)}}\\);\")",
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxIiwic2Vzc2lvbklkIjoiNGVkMDg2MTdlOTkxMWJmZWI0NzgwNDUxYjVhYjVkZTYiLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzc0NjI1MjAyLCJleHAiOjE3NzQ2MjcwMDJ9.EwEI-3rw5tP4b41l7poq53sjnz4QuR-U71qEs5GVXN8\" __NEW_LINE_dbf6ca85b1964566__ curl -s \"https://wcc-accre-bedev.onrender.com/content-manager/collection-types/plugin::users-permissions.user/afriybi4ufrzuxjs9es44a9n\" -H \"Authorization: Bearer $TOKEN\")",
-      "Bash(node -e \"const c=[]; process.stdin.on\\(''''data'''',d=>c.push\\(d\\)\\); process.stdin.on\\(''''end'''',\\(\\)=>{const d=JSON.parse\\(Buffer.concat\\(c\\).toString\\(\\)\\); const u=d.data||d; console.log\\(''''User:'''', u.username\\); console.log\\(''''Email:'''', u.email\\); console.log\\(''''Role \\(built-in\\):'''', u.role?.name\\); console.log\\(''''Personel Role:'''', u.personel_role?.role || JSON.stringify\\(u.personel_role\\)\\)}\\);\")"
+      "Bash(node -e \"const c=[]; process.stdin.on\\(''''data'''',d=>c.push\\(d\\)\\); process.stdin.on\\(''''end'''',\\(\\)=>{const d=JSON.parse\\(Buffer.concat\\(c\\).toString\\(\\)\\); const u=d.data||d; console.log\\(''''User:'''', u.username\\); console.log\\(''''Email:'''', u.email\\); console.log\\(''''Role \\(built-in\\):'''', u.role?.name\\); console.log\\(''''Personel Role:'''', u.personel_role?.role || JSON.stringify\\(u.personel_role\\)\\)}\\);\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://wcc-accre-bedev.onrender.com/admin/login\")",
+      "Read(//c/Users/User/Downloads/**)",
+      "Bash(pandoc \"AREA 1.C - PHILOSOPHY and OBJECTIVES.docx\" -t markdown)",
+      "Bash(node update_area1.cjs)",
+      "Bash(node update_area5.cjs)",
+      "Bash(node update_area6.cjs)",
+      "Bash(node update_area7.cjs)",
+      "Bash(node update_area8.cjs)",
+      "Bash(node update_area9.cjs)",
+      "Bash(node update_area10.cjs)"
     ]
   }
 }

@@ -4,7 +4,7 @@ import { PDFDocument } from 'pdf-lib';
 import { api } from '../services/api';
 import { Area, FileUploadMetadata } from '../types/area';
 import { sortAreasByNumber } from '../utils/sorting';
-import { hasManagementAccess, getUserPersonelRole, isDeanRole, isViewer } from '../utils/roles';
+import { hasManagementAccess, getUserPersonelRole, isDeanRole, isViewer, criteriaMatchesProgram } from '../utils/roles';
 
 interface FlatFile {
   areaName: string;
@@ -192,10 +192,13 @@ export default function ConsolidateFiles() {
     return true;
   };
 
-  // Flatten all files from areas, filtering at upload level
+  // Resolve selected program ID to program code for criteria filtering
+  const selectedProgramCode = programs.find((p: any) => String(p.id) === selectedProgram)?.programCode || undefined;
+
+  // Flatten all files from areas, filtering at upload and criteria level
   const flatFiles: FlatFile[] = [];
   sortedAreas.forEach(area => {
-    area.areaCriteria?.forEach(criteria => {
+    area.areaCriteria?.filter(c => criteriaMatchesProgram(c.programs, selectedProgramCode)).forEach(criteria => {
       criteria.criteriaUploads?.forEach(upload => {
         if (!matchesFilters(upload)) return;
         const url = getFileUrl(upload);

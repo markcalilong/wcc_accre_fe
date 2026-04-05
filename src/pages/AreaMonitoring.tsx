@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { Area, AreaCriteria, FileUploadMetadata } from '../types/area';
 import { Loader2, AlertCircle, RefreshCw, FileCheck, Clock, CheckCircle2, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
-import { hasManagementAccess, getUserPersonelRole, isDeanRole, isViewer } from '../utils/roles';
+import { hasManagementAccess, getUserPersonelRole, isDeanRole, isViewer, criteriaMatchesProgram } from '../utils/roles';
 import { sortAreasByNumber } from '../utils/sorting';
 
 function getUploadStatus(uploads: FileUploadMetadata[]): 'none' | 'uploaded' | 'reviewed' | 'approved' {
@@ -28,8 +28,13 @@ function StatusBadge({ status }: { status: 'none' | 'uploaded' | 'reviewed' | 'a
   }
 }
 
-function AreaSection({ area, filterUploads, onNavigate }: { key?: any; area: Area; filterUploads: (uploads: FileUploadMetadata[]) => FileUploadMetadata[]; onNavigate: (id: string) => void }) {
+function AreaSection({ area, filterUploads, onNavigate, selectedProgramCode }: { key?: any; area: Area; filterUploads: (uploads: FileUploadMetadata[]) => FileUploadMetadata[]; onNavigate: (id: string) => void; selectedProgramCode?: string }) {
   const [expanded, setExpanded] = useState(true);
+
+  // Filter criteria by selected program (empty programs field = universal)
+  const visibleCriteria = area.areaCriteria.filter(c =>
+    criteriaMatchesProgram(c.programs, selectedProgramCode)
+  );
 
   return (
     <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden">
@@ -43,7 +48,7 @@ function AreaSection({ area, filterUploads, onNavigate }: { key?: any; area: Are
             {area.areaDesc && <p className="text-sm text-zinc-500 mt-1">{area.areaDesc}</p>}
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               <span className="text-[10px] font-bold text-zinc-400 bg-zinc-50 px-2 py-0.5 rounded-full border border-zinc-100 uppercase tracking-wider">
-                {area.areaCriteria.length} criteria
+                {visibleCriteria.length} criteria
               </span>
             </div>
           </div>
@@ -62,11 +67,11 @@ function AreaSection({ area, filterUploads, onNavigate }: { key?: any; area: Are
 
       {expanded && (
         <div className="border-t border-zinc-100">
-          {area.areaCriteria.length === 0 ? (
+          {visibleCriteria.length === 0 ? (
             <div className="p-6 text-center text-zinc-400 text-sm italic">No criteria defined.</div>
           ) : (
             <div className="divide-y divide-zinc-50">
-              {area.areaCriteria.map((criteria) => (
+              {visibleCriteria.map((criteria) => (
                 <CriteriaRow
                   key={criteria.id}
                   criteria={criteria}
@@ -213,6 +218,13 @@ export default function AreaMonitoring() {
   const showProgramFilter = isAdmin || isDean || isViewerRole;
   const showCampusFilter = isAdmin || isViewerRole;
 
+  // Resolve selected program ID to program code for criteria filtering
+  const selectedProgramCode = useMemo(() => {
+    if (!selectedProgram) return undefined;
+    const match = programs.find((p: any) => String(p.id) === selectedProgram);
+    return match?.programCode || undefined;
+  }, [selectedProgram, programs]);
+
   const userCoveredAreas = useMemo(() => {
     return userData?.personel_role?.coveredAreas?.map(
       (a: any) => a.area_with_permission.toLowerCase().trim()
@@ -260,7 +272,7 @@ export default function AreaMonitoring() {
     let approved = 0;
 
     filteredAreas.forEach(area => {
-      area.areaCriteria.forEach(criteria => {
+      area.areaCriteria.filter(c => criteriaMatchesProgram(c.programs, selectedProgramCode)).forEach(criteria => {
         filterUploads(criteria.criteriaUploads || []).forEach(u => {
           if (u.fileStatus === 'Approved') approved++;
           else if (u.fileStatus === 'Reviewed') reviewed++;
@@ -461,7 +473,7 @@ export default function AreaMonitoring() {
             <p className="text-zinc-400 italic">No areas found.</p>
           </div>
         ) : (
-          filteredAreas.map((area) => <AreaSection key={area.id} area={area} filterUploads={filterUploads} onNavigate={(id) => navigate(`/dashboard/areas/${id}`)} />)
+          filteredAreas.map((area) => <AreaSection key={area.id} area={area} filterUploads={filterUploads} onNavigate={(id) => navigate(`/dashboard/areas/${id}`)} selectedProgramCode={selectedProgramCode} />)
         )}
       </div>
     </div>
