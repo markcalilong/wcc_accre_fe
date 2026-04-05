@@ -15,6 +15,7 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [campuses, setCampuses] = useState<any[]>([]);
+  const [programs, setPrograms] = useState<any[]>([]);
 
   const [formData, setFormData] = useState({
     area: '',
@@ -55,10 +56,12 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
     if (!token) return;
 
     try {
-      const [campusesData] = await Promise.all([
-        api.getCampuses(token).catch(() => [])
+      const [campusesData, programsData] = await Promise.all([
+        api.getCampuses(token).catch(() => []),
+        api.getAcademicPrograms(token).catch(() => [])
       ]);
       setCampuses(campusesData);
+      setPrograms(programsData);
     } catch (err: any) {
       console.error('Failed to fetch options:', err);
     }
@@ -162,7 +165,7 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
       ...formData,
       areaCriteria: [
         ...formData.areaCriteria,
-        { code: '', desc: '', subcriteria: [] }
+        { code: '', desc: '', programs: '', subcriteria: [] }
       ]
     });
   };
@@ -419,6 +422,43 @@ export default function AreaModal({ isOpen, onClose, onSuccess, area }: AreaModa
                         className="w-full px-4 py-3 bg-white border border-zinc-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
                         placeholder="Criteria description..."
                       />
+                    </div>
+                  </div>
+
+                  {/* Program Tags */}
+                  <div className="mt-2 space-y-1">
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest px-1">Programs (leave empty = all programs)</label>
+                    <div className="flex flex-wrap gap-2">
+                      {programs.map((p: any) => {
+                        const code = p.programCode || p.programDesc || '';
+                        const currentPrograms = (c.programs || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+                        const isSelected = currentPrograms.map((s: string) => s.toLowerCase()).includes(code.toLowerCase());
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => {
+                              let updated: string[];
+                              if (isSelected) {
+                                updated = currentPrograms.filter((s: string) => s.toLowerCase() !== code.toLowerCase());
+                              } else {
+                                updated = [...currentPrograms, code];
+                              }
+                              updateCriteria(idx, 'programs', updated.join(','));
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                              isSelected
+                                ? 'bg-indigo-100 text-indigo-700 ring-2 ring-indigo-300'
+                                : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'
+                            }`}
+                          >
+                            {code}
+                          </button>
+                        );
+                      })}
+                      {programs.length === 0 && (
+                        <span className="text-xs text-zinc-400 italic">No programs available</span>
+                      )}
                     </div>
                   </div>
 

@@ -62,6 +62,7 @@ export interface AreaCriteria {
   documentId?: string;
   code: string;
   desc: string;
+  programs?: string | null;
   criteriaUploads: FileUploadMetadata[];
   subcriteria: SubCriteria[];
 }
