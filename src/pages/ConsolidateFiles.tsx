@@ -126,8 +126,8 @@ export default function ConsolidateFiles() {
   const isAdmin = hasManagementAccess(userRole);
   const isDean = isDeanRole(userRole);
   const isViewerRole = isViewer(userRole);
-  const showProgramFilter = isAdmin || isDean || isViewerRole;
-  const showCampusFilter = isAdmin || isViewerRole;
+  const showProgramFilter = true; // All roles can select program context
+  const showCampusFilter = true;  // All roles can select campus context
 
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem('jwt');

