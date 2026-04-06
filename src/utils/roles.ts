@@ -24,6 +24,7 @@ const UPLOADER_ROLES = [
   'faculty',
   'admin staff',
   'library staff',
+  'staff',
 ];
 
 // View-only roles: can browse areas and consolidate files, but cannot upload/review/approve
@@ -116,11 +117,15 @@ export function canUploadToCriteria(user: any, areaName: string, criteriaCode: s
   if (MANAGEMENT_ROLES.includes(r)) return true;
 
   const coveredAreas = user?.personel_role?.coveredAreas || [];
+
+  // If no coveredAreas defined at all, user is a general uploader — allow all areas
+  if (coveredAreas.length === 0) return true;
+
   const matchingArea = coveredAreas.find(
     (a: any) => (a.area_with_permission || '').toLowerCase().trim() === areaName.toLowerCase().trim()
   );
 
-  // If user doesn't have this area at all, they can't upload
+  // If user has coveredAreas but this area isn't in them, they can't upload
   if (!matchingArea) return false;
 
   // If allowedCriteria is empty/null, user can upload to ALL criteria in this area
