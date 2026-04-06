@@ -244,13 +244,8 @@ export default function FileUploadComponent({
                         {upload.fileName}
                       </p>
                     )}
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       {getStatusBadge(upload.fileStatus)}
-                      {upload.remarks && (
-                        <span className="text-[10px] text-zinc-400 truncate max-w-[150px]">
-                          • {upload.remarks}
-                        </span>
-                      )}
                       {upload.uploader && (
                         <span className="text-[10px] text-zinc-400">
                           • By {upload.uploader.username}
@@ -259,6 +254,38 @@ export default function FileUploadComponent({
                       {upload.approver && (
                         <span className="text-[10px] text-emerald-500 font-medium">
                           • Approved by {upload.approver.username}
+                        </span>
+                      )}
+                      {upload.remarks && (
+                        <span className="text-[10px] text-zinc-400 truncate max-w-[150px]">
+                          • {upload.remarks}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 mt-1 flex-wrap">
+                      {upload.academic_year?.schoolyear && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-blue-50 text-blue-600 border border-blue-100">
+                          {upload.academic_year.schoolyear}
+                        </span>
+                      )}
+                      {upload.semester?.semCode && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-violet-50 text-violet-600 border border-violet-100">
+                          {upload.semester.semCode}
+                        </span>
+                      )}
+                      {upload.academic_program?.programCode && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-amber-50 text-amber-600 border border-amber-100">
+                          {upload.academic_program.programCode}
+                        </span>
+                      )}
+                      {upload.campus?.campusDesc && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100">
+                          {upload.campus.campusDesc}
+                        </span>
+                      )}
+                      {upload.visit?.visitType && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-rose-50 text-rose-600 border border-rose-100">
+                          {upload.visit.visitType}
                         </span>
                       )}
                     </div>

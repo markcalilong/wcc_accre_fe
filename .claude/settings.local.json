@@ -86,7 +86,8 @@
       "Bash(node update_area10.cjs)",
       "Bash(node update_tm.cjs)",
       "Bash(node update_area3_all.cjs)",
-      "Bash(node update_area4_all.cjs)"
+      "Bash(node update_area4_all.cjs)",
+      "Bash(node assign_campus.cjs)"
     ]
   }
 }

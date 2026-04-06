@@ -349,23 +349,31 @@ export default function AreaMonitoring() {
 
       {/* Filters */}
       <div className={`grid grid-cols-1 sm:grid-cols-2 ${showCampusFilter ? 'lg:grid-cols-5' : showProgramFilter ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
-        {showProgramFilter && (
-          <div>
-            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Academic Program</label>
-            <select
-              value={selectedProgram}
-              onChange={(e) => setSelectedProgram(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-zinc-200 bg-white text-sm font-medium text-zinc-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none appearance-none"
-            >
-              <option value="">All Programs</option>
-              {programs.map((p: any) => (
-                <option key={p.id} value={String(p.id)}>
-                  {p.programCode || p.attributes?.programCode}{p.programDesc ? ` - ${p.programDesc}` : p.attributes?.programDesc ? ` - ${p.attributes.programDesc}` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+        {showProgramFilter && (() => {
+          const userProgCode = (!isAdmin && !isViewerRole && userData?.academic_program)
+            ? (typeof userData.academic_program === 'string' ? userData.academic_program : userData.academic_program?.programCode)
+            : null;
+          const filteredPrograms = (userProgCode && userProgCode.toUpperCase() !== 'ALL')
+            ? programs.filter((p: any) => (p.programCode || '').toLowerCase() === userProgCode.toLowerCase())
+            : programs;
+          return (
+            <div>
+              <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Academic Program</label>
+              <select
+                value={selectedProgram}
+                onChange={(e) => setSelectedProgram(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-zinc-200 bg-white text-sm font-medium text-zinc-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none appearance-none"
+              >
+                <option value="">{(userProgCode && userProgCode.toUpperCase() !== 'ALL') ? 'Select Program' : 'All Programs'}</option>
+                {filteredPrograms.map((p: any) => (
+                  <option key={p.id} value={String(p.id)}>
+                    {p.programCode || p.attributes?.programCode}{p.programDesc ? ` - ${p.programDesc}` : p.attributes?.programDesc ? ` - ${p.attributes.programDesc}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          );
+        })()}
         <div>
           <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Academic Year</label>
           <select
@@ -411,23 +419,31 @@ export default function AreaMonitoring() {
             ))}
           </select>
         </div>
-        {showCampusFilter && (
-          <div>
-            <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Campus</label>
-            <select
-              value={selectedCampus}
-              onChange={(e) => setSelectedCampus(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-zinc-200 bg-white text-sm font-medium text-zinc-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none appearance-none"
-            >
-              <option value="">All Campuses</option>
-              {campuses.map((c: any) => (
-                <option key={c.id} value={String(c.id)}>
-                  {c.campusName || c.attributes?.campusName}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+        {showCampusFilter && (() => {
+          const userCampusIds = (!isAdmin && !isViewerRole && userData?.campuses?.length)
+            ? userData.campuses.map((c: any) => c.id)
+            : null;
+          const filteredCampuses = userCampusIds
+            ? campuses.filter((c: any) => userCampusIds.includes(c.id))
+            : campuses;
+          return (
+            <div>
+              <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Campus</label>
+              <select
+                value={selectedCampus}
+                onChange={(e) => setSelectedCampus(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-zinc-200 bg-white text-sm font-medium text-zinc-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none appearance-none"
+              >
+                <option value="">{userCampusIds ? 'Select Campus' : 'All Campuses'}</option>
+                {filteredCampuses.map((c: any) => (
+                  <option key={c.id} value={String(c.id)}>
+                    {c.campusName || c.campusDesc || c.attributes?.campusName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Summary Cards */}

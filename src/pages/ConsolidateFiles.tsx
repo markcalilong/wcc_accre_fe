@@ -439,25 +439,33 @@ export default function ConsolidateFiles() {
           <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Filters</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {showProgramFilter && (
-            <div className="space-y-1.5">
-              <label className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
-                <GraduationCap className="w-3.5 h-3.5" /> Academic Program
-              </label>
-              <select
-                value={selectedProgram}
-                onChange={e => { setSelectedProgram(e.target.value); setSelectedFiles(new Set()); }}
-                className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-              >
-                <option value="">All Programs</option>
-                {programs.map(p => (
-                  <option key={p.id} value={String(p.id)}>
-                    {p.programCode || p.attributes?.programCode}{p.programDesc ? ` - ${p.programDesc}` : p.attributes?.programDesc ? ` - ${p.attributes.programDesc}` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          {showProgramFilter && (() => {
+            const userProgCode = (!isAdmin && !isViewerRole && userData?.academic_program)
+              ? (typeof userData.academic_program === 'string' ? userData.academic_program : userData.academic_program?.programCode)
+              : null;
+            const filteredPrograms = (userProgCode && userProgCode.toUpperCase() !== 'ALL')
+              ? programs.filter((p: any) => (p.programCode || '').toLowerCase() === userProgCode.toLowerCase())
+              : programs;
+            return (
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                  <GraduationCap className="w-3.5 h-3.5" /> Academic Program
+                </label>
+                <select
+                  value={selectedProgram}
+                  onChange={e => { setSelectedProgram(e.target.value); setSelectedFiles(new Set()); }}
+                  className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                >
+                  <option value="">{(userProgCode && userProgCode.toUpperCase() !== 'ALL') ? 'Select Program' : 'All Programs'}</option>
+                  {filteredPrograms.map(p => (
+                    <option key={p.id} value={String(p.id)}>
+                      {p.programCode || p.attributes?.programCode}{p.programDesc ? ` - ${p.programDesc}` : p.attributes?.programDesc ? ` - ${p.attributes.programDesc}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            );
+          })()}
           <div className="space-y-1.5">
             <label className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
               <Calendar className="w-3.5 h-3.5" /> Academic Year
@@ -475,25 +483,33 @@ export default function ConsolidateFiles() {
               ))}
             </select>
           </div>
-          {showCampusFilter && (
-            <div className="space-y-1.5">
-              <label className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
-                <MapPin className="w-3.5 h-3.5" /> Campus
-              </label>
-              <select
-                value={selectedCampus}
-                onChange={e => { setSelectedCampus(e.target.value); setSelectedFiles(new Set()); }}
-                className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-              >
-                <option value="">All Campuses</option>
-                {campuses.map(c => (
-                  <option key={c.id} value={String(c.id)}>
-                    {c.campusDesc || c.attributes?.campusDesc}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          {showCampusFilter && (() => {
+            const userCampusIds = (!isAdmin && !isViewerRole && userData?.campuses?.length)
+              ? userData.campuses.map((c: any) => c.id)
+              : null;
+            const filteredCampuses = userCampusIds
+              ? campuses.filter((c: any) => userCampusIds.includes(c.id))
+              : campuses;
+            return (
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                  <MapPin className="w-3.5 h-3.5" /> Campus
+                </label>
+                <select
+                  value={selectedCampus}
+                  onChange={e => { setSelectedCampus(e.target.value); setSelectedFiles(new Set()); }}
+                  className="w-full px-3 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                >
+                  <option value="">{userCampusIds ? 'Select Campus' : 'All Campuses'}</option>
+                  {filteredCampuses.map(c => (
+                    <option key={c.id} value={String(c.id)}>
+                      {c.campusDesc || c.attributes?.campusDesc}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            );
+          })()}
           <div className="space-y-1.5">
             <label className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
               <BookOpen className="w-3.5 h-3.5" /> Semester
