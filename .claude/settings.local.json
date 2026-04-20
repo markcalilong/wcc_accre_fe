@@ -87,7 +87,19 @@
       "Bash(node update_tm.cjs)",
       "Bash(node update_area3_all.cjs)",
       "Bash(node update_area4_all.cjs)",
-      "Bash(node assign_campus.cjs)"
+      "Bash(node assign_campus.cjs)",
+      "Bash(pg_dump --version)",
+      "Read(//c/Program Files/PostgreSQL/**)",
+      "Read(//c/Program Files \\(x86\\)/**)",
+      "Bash(\"/c/Program Files/PostgreSQL/18/bin/pg_dump.exe\" --version)",
+      "Bash(PGPASSWORD=\"SAHn9VTkQrA4Onn0vua0hD4kF7e16PFF\" PGSSLMODE=require \"/c/Program Files/PostgreSQL/18/bin/pg_dump.exe\" --host=dpg-d718jap5pdvs73fr4ucg-a.singapore-postgres.render.com --port=5432 --username=wcc_accre_dik3_user --dbname=wcc_accre_dik3 --format=custom --no-owner --no-privileges --file=db_backup_20260417_pgdump.dump)",
+      "Bash(PGPASSWORD=\"SAHn9VTkQrA4Onn0vua0hD4kF7e16PFF\" PGSSLMODE=require \"/c/Program Files/PostgreSQL/18/bin/pg_dump.exe\" --host=dpg-d718jap5pdvs73fr4ucg-a.singapore-postgres.render.com --port=5432 --username=wcc_accre_dik3_user --dbname=wcc_accre_dik3 --format=plain --no-owner --no-privileges --file=db_backup_20260417_pgdump.sql)",
+      "Bash(PGPASSWORD=\"SAHn9VTkQrA4Onn0vua0hD4kF7e16PFF\" PGSSLMODE=require \"/c/Program Files/PostgreSQL/18/bin/pg_restore.exe\" --list db_backup_20260417_pgdump.dump)",
+      "Bash(\"/c/Program Files/PostgreSQL/18/bin/pg_restore.exe\" --list db_backup_20260417_pgdump.dump)",
+      "Bash(awk '{print $NF, $\\(NF-1\\), $\\(NF-2\\)}')",
+      "Bash(awk '/^COPY public.files / {flag=1; next} flag && /^\\\\\\\\\\\\./ {flag=0} flag' db_backup_20260417_pgdump.sql)",
+      "Bash(\"/c/Program Files/PostgreSQL/18/bin/pg_restore.exe\" --list db_backup_20260420_155618_pgdump.dump)",
+      "Bash(awk '/^COPY public.files / {flag=1; next} flag && /^\\\\\\\\\\\\./ {flag=0} flag' db_backup_20260420_155618_pgdump.sql)"
     ]
   }
 }

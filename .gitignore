@@ -7,3 +7,6 @@ coverage/
 .env*
 !.env.example
 db_backup_*.json
+db_backup_*.dump
+db_backup_*.sql
+.db_creds
