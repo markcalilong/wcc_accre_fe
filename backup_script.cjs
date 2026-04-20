@@ -1,7 +1,7 @@
 const https = require('https');
 const fs = require('fs');
 
-function fetch(url, opts = {}) {
+function fetchOnce(url, opts = {}) {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url);
     const options = {
@@ -9,7 +9,7 @@ function fetch(url, opts = {}) {
       path: urlObj.pathname + urlObj.search,
       method: opts.method || 'GET',
       headers: opts.headers || {},
-      timeout: 30000
+      timeout: opts.timeout || 120000
     };
     const req = https.request(options, res => {
       let data = '';
@@ -23,6 +23,21 @@ function fetch(url, opts = {}) {
     if (opts.body) req.write(opts.body);
     req.end();
   });
+}
+
+async function fetch(url, opts = {}) {
+  const maxRetries = 4;
+  let lastErr;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fetchOnce(url, opts);
+    } catch (e) {
+      lastErr = e;
+      console.log('  retry ' + (i + 1) + '/' + maxRetries + ' after ' + e.message);
+      await new Promise(r => setTimeout(r, 3000 * (i + 1)));
+    }
+  }
+  throw lastErr;
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }

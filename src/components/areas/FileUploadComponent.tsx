@@ -120,6 +120,28 @@ export default function FileUploadComponent({
   const [viewingPdf, setViewingPdf] = useState<{ url: string; fileName: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Auto-dismiss transient errors after 6 seconds so stale banners don't stick around forever
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => setError(null), 6000);
+    return () => clearTimeout(t);
+  }, [error]);
+
+  const humanizeUploadError = (msg: string) => {
+    if (!msg) return 'Failed to upload file. Please try again.';
+    const lower = msg.toLowerCase();
+    if (lower.includes('internal server error') || lower.includes('500')) {
+      return "Upload failed — the server hiccuped (it may have been waking up). Please try again in a few seconds.";
+    }
+    if (lower.includes('payload') || lower.includes('too large') || lower.includes('413')) {
+      return 'Upload failed — the file is too large.';
+    }
+    if (lower.includes('network') || lower.includes('failed to fetch')) {
+      return 'Upload failed — network issue. Check your connection and try again.';
+    }
+    return msg;
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -138,8 +160,17 @@ export default function FileUploadComponent({
           continue;
         }
 
-        // 1. Upload file to Strapi
-        const uploadedFile = await api.uploadFile(token, file);
+        // 1. Upload file to Strapi (retry once on transient 500s — usually a Render cold start)
+        let uploadedFile;
+        try {
+          uploadedFile = await api.uploadFile(token, file);
+        } catch (firstErr: any) {
+          const msg = (firstErr?.message || '').toLowerCase();
+          const isTransient = msg.includes('internal server error') || msg.includes('500') || msg.includes('failed to fetch');
+          if (!isTransient) throw firstErr;
+          await new Promise(r => setTimeout(r, 2500));
+          uploadedFile = await api.uploadFile(token, file);
+        }
 
         const user = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -153,11 +184,16 @@ export default function FileUploadComponent({
         });
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to upload files');
+      setError(humanizeUploadError(err?.message || ''));
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const handleUploadClick = () => {
+    setError(null); // clear any stale error from a previous attempt
+    fileInputRef.current?.click();
   };
 
   const getStatusBadge = (status: string) => {
@@ -189,7 +225,7 @@ export default function FileUploadComponent({
           {canUpload ? (
             <>
               <button
-                onClick={() => fileInputRef.current?.click()}
+                onClick={handleUploadClick}
                 disabled={uploading}
                 className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-white bg-[#4a86f7] hover:bg-blue-600 rounded-lg transition-all disabled:opacity-50"
               >
@@ -212,9 +248,17 @@ export default function FileUploadComponent({
       </div>
 
       {error && (
-        <div className="p-3 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          {error}
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 text-xs flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <span className="flex-1 leading-relaxed">{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className="text-rose-400 hover:text-rose-700 shrink-0"
+            aria-label="Dismiss error"
+            title="Dismiss"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
 
